@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --primary: oklch(0.5 0.15 280); /* Deep Purple/Beauté */
+  --secondary: oklch(0.9 0.05 30); /* Soft Pink/Beige */
+  --accent: oklch(0.6 0.2 150); /* Soft Mint Pearl */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+}
+
+@theme {
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.premium-btn {
+  @apply px-6 py-3 rounded-full font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg;
+}
