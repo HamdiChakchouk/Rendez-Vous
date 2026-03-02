@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { ok, err } from '@/lib/api-response';
 
 export async function GET(
     req: Request,
@@ -7,12 +8,18 @@ export async function GET(
 ) {
     try {
         const { salonId } = await params;
-        const employes = await prisma.employe.findMany({
-            where: { salon_id: salonId }
-        });
 
-        return NextResponse.json({ success: true, employes });
+        const { data: employes, error } = await supabaseAdmin
+            .from('employes')
+            .select('*')
+            .eq('salon_id', salonId)
+            .order('nom_employe', { ascending: true });
+
+        if (error) throw error;
+
+        return ok({ employes: employes ?? [] });
     } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        console.error('[employees] Error:', error);
+        return err(error.message);
     }
 }

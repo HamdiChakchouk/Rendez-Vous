@@ -225,7 +225,7 @@ export default function SalonDashboard() {
     }
 
     const isManager = role === 'manager'
-    const userName = isManager ? profile?.nom_admin : profile?.nom_employe
+    const userName = profile ? `${profile.prenom ?? ''} ${profile.nom ?? ''}`.trim() || 'Pro' : 'Pro'
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">

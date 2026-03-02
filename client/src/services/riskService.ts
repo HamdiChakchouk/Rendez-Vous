@@ -1,4 +1,4 @@
-import prisma from '@/lib/prisma';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { differenceInHours } from 'date-fns';
 
 /**
@@ -8,68 +8,69 @@ import { differenceInHours } from 'date-fns';
 export class RiskService {
     /**
      * Recalcule le score de risque d'un client en fonction de son historique récent (90 jours).
-     * @param clientId ID du client
      */
     static async recalculateRiskScore(clientId: string): Promise<number> {
         const ninetyDaysAgo = new Date();
         ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-        const appointments = await prisma.rendezVous.findMany({
-            where: {
-                client_id: clientId,
-                date_rdv: {
-                    gte: ninetyDaysAgo,
-                },
-            },
-            orderBy: {
-                date_rdv: 'desc',
-            },
-        });
+        const { data: appointments, error } = await supabaseAdmin
+            .from('rendez_vous')
+            .select('statut, confirmed_at, updated_at, date_rdv, heure_rdv')
+            .eq('client_id', clientId)
+            .gte('date_rdv', ninetyDaysAgo.toISOString())
+            .order('date_rdv', { ascending: false });
 
-        if (appointments.length === 0) return 0;
+        if (error || !appointments || appointments.length === 0) return 0;
 
         const total = appointments.length;
         const noShows = appointments.filter((a) => a.statut === 'no_show').length;
+
         const lateCancels = appointments.filter((a) => {
             if (a.statut !== 'cancelled_client') return false;
-            if (!a.confirmed_at) return false; // On ne pénalise pas si non confirmé? A débattre.
+            if (!a.confirmed_at) return false;
 
-            // Si annulé moins de 24h avant l'heure prévue
-            // Note: date_rdv et heure_rdv sont séparés dans le schéma actuel.
-            // On combine pour le calcul.
-            const appointmentDate = new Date(a.date_rdv);
-            const [hours, minutes] = (a.heure_rdv as any).toString().split(':').map(Number);
-            appointmentDate.setHours(hours, minutes);
+            // ✅ Fix : heure_rdv est stocké comme "HH:MM:SS" (string)
+            const dateStr = typeof a.date_rdv === 'string'
+                ? a.date_rdv.split('T')[0]
+                : new Date(a.date_rdv).toISOString().split('T')[0];
+            const timeStr = typeof a.heure_rdv === 'string'
+                ? a.heure_rdv.slice(0, 5)
+                : '00:00';
 
-            const cancelTime = (a as any).updated_at; // On suppose que updated_at est le moment de l'annulation
-            return differenceInHours(appointmentDate, cancelTime) < 24;
+            const appointmentDateTime = new Date(`${dateStr}T${timeStr}:00`);
+            const cancelTime = new Date(a.updated_at);
+
+            return differenceInHours(appointmentDateTime, cancelTime) < 24;
         }).length;
 
-        // Formule inspirée de Claude : (absences * 0.5 + annulations tardives * 0.25) / total
-        const score = (noShows * 0.5 + lateCancels * 0.25) / total;
+        // Formule : (absences * 0.5 + annulations tardives * 0.25) / total, saturé à 1.0
+        const score = Math.min((noShows * 0.5 + lateCancels * 0.25) / total, 1.0);
 
-        // On sature à 1.0
-        const finalScore = Math.min(score, 1.0);
+        await supabaseAdmin
+            .from('clients')
+            .update({ risk_score: score })
+            .eq('id', clientId);
 
-        await prisma.client.update({
-            where: { id: clientId },
-            data: { risk_score: finalScore },
-        });
-
-        return finalScore;
+        return score;
     }
 
     /**
      * Applique une pénalité immédiate pour un no-show.
      */
     static async recordNoShow(appointmentId: string) {
-        const appointment = await prisma.rendezVous.update({
-            where: { id: appointmentId },
-            data: { statut: 'no_show' },
-            include: { client: true },
-        });
+        const { data: appointment, error } = await supabaseAdmin
+            .from('rendez_vous')
+            .update({ statut: 'no_show' })
+            .eq('id', appointmentId)
+            .select('client_id')
+            .single();
 
-        if (appointment.client_id) {
+        if (error) {
+            console.error('[RiskService] Failed to update no-show:', error);
+            return;
+        }
+
+        if (appointment?.client_id) {
             await this.recalculateRiskScore(appointment.client_id);
         }
     }

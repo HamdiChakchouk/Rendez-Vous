@@ -139,7 +139,38 @@ ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE waitlist ENABLE ROW LEVEL SECURITY;
 ALTER TABLE otp_custom ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
-ALTER TABLE absences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.absences ENABLE ROW LEVEL SECURITY;
+
+-- Table: profiles
+CREATE TABLE public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    role TEXT CHECK (role IN ('super_admin', 'manager', 'coiffeur', 'client')),
+    salon_id UUID REFERENCES public.salons(id) ON DELETE SET NULL,
+    nom TEXT,
+    prenom TEXT,
+    telephone TEXT,
+    onboarding_completed BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Helper function to avoid recursion
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'super_admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Enable RLS for profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+-- Policies for profiles
+CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Super admins can view all profiles" ON public.profiles FOR SELECT USING (public.is_super_admin());
 
 -- Policies (Simplified for MVP, usually we'd restrict further)
 CREATE POLICY "Public read for salons" ON salons FOR SELECT USING (true);

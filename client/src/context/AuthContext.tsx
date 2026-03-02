@@ -68,19 +68,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
-                .single()
+                .maybeSingle()
 
-            if (error) throw error
+            if (error) {
+                // Si la table n'existe pas encore (erreur 42P01 en Postgres), on log un message clair
+                if (error.code === '42P01') {
+                    console.warn('[AuthContext] La table "profiles" n\'existe pas encore. Veuillez exécuter le SQL dans Supabase.');
+                } else {
+                    console.error('[AuthContext] Erreur lors de la récupération du profil:', error.message || error);
+                }
+                throw error
+            }
 
             if (data) {
                 setProfile(data as Profile)
                 setRole(data.role as Role)
             } else {
+                console.log('[AuthContext] Aucun profil trouvé pour cet utilisateur. C\'est normal si vous venez de créer le compte.');
                 setProfile(null)
                 setRole(null)
             }
         } catch (error) {
-            console.error('[AuthContext] Error fetching profile:', error)
+            // On ne log plus l'erreur ici car elle est déjà loggée au-dessus ou attendue
             setProfile(null)
             setRole(null)
         } finally {

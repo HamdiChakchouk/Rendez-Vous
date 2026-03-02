@@ -1,51 +1,55 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { RiskService } from '@/services/riskService';
-import { subMinutes } from 'date-fns';
+import { subHours, startOfDay } from 'date-fns';
+import { ok, err } from '@/lib/api-response';
 
 /**
  * Endpoint Cron pour détecter les no-shows.
- * À exécuter toutes les 30 minutes.
+ * Sécurisé par Authorization: Bearer <CRON_SECRET>
  */
 export async function GET(req: Request) {
-    const { searchParams } = new URL(req.url);
-    const key = searchParams.get('key');
+    const authHeader = req.headers.get('authorization');
+    const secret = authHeader?.replace('Bearer ', '').trim();
 
-    if (key !== process.env.CRON_SECRET) {
-        return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    if (secret !== process.env.CRON_SECRET) {
+        return err('Non autorisé', 401);
     }
 
     try {
         const now = new Date();
-        // On cherche les RDV confirmés ou rappelés dont l'heure de fin est passée de plus de 30 min
-        // Pour simplifier ici, on prend ceux dont l'heure de début est passée de > 2h (moyenne RDV)
-        // En réalité, il faudrait calculer start_time + duree_minutes.
-        const threshold = subMinutes(now, 120);
+        const twoHoursAgo = subHours(now, 2).toISOString();
+        const yesterday = startOfDay(subHours(now, 24)).toISOString();
 
-        const suspectedNoShows = await prisma.rendezVous.findMany({
-            where: {
-                statut: { in: ['confirmed', 'reminded'] },
-                // Simple approximation
-                date_rdv: { lte: now },
-                // Logique plus fine nécessaire pour l'heure
-            },
-            include: { client: true },
-        });
+        const { data: appointments, error } = await supabaseAdmin
+            .from('rendez_vous')
+            .select('id, date_rdv, heure_rdv, statut, client_id')
+            .in('statut', ['confirmed', 'reminded'])
+            .gte('date_rdv', yesterday)
+            .lte('date_rdv', twoHoursAgo);
+
+        if (error) throw error;
 
         let count = 0;
-        for (const app of suspectedNoShows) {
-            // Logique de validation temporelle réelle
-            // Si (app.date + app.time + duree) < now - 30min
+        for (const app of appointments ?? []) {
+            const dateStr = typeof app.date_rdv === 'string'
+                ? app.date_rdv.split('T')[0]
+                : new Date(app.date_rdv).toISOString().split('T')[0];
+            const timeStr = typeof app.heure_rdv === 'string'
+                ? app.heure_rdv.slice(0, 5)
+                : '00:00';
+            const rdvDateTime = new Date(`${dateStr}T${timeStr}:00`);
+            const rdvEndEstimate = new Date(rdvDateTime.getTime() + 60 * 60 * 1000);
+
+            if (rdvEndEstimate > now) continue;
+
             await RiskService.recordNoShow(app.id);
             count++;
         }
 
-        return NextResponse.json({
-            success: true,
-            detectedNoShows: count,
-        });
+        return ok({ detectedNoShows: count });
     } catch (error: any) {
-        console.error('[No-Show Cron Error]', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        console.error('[Cron No-Show] Error:', error);
+        return err(error.message);
     }
 }

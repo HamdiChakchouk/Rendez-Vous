@@ -1,67 +1,69 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { NotificationService } from '@/services/notificationService';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { addDays, format, startOfDay, endOfDay } from 'date-fns';
+import { NotificationService } from '@/services/notificationService';
+import { ok, err } from '@/lib/api-response';
 
 /**
  * Endpoint Cron pour envoyer les rappels J-1.
- * Sécurisé par une clé secrète en en-tête.
+ * Sécurisé par Authorization: Bearer <CRON_SECRET>
  */
 export async function GET(req: Request) {
-    const { searchParams } = new URL(req.url);
-    const key = searchParams.get('key');
+    const authHeader = req.headers.get('authorization');
+    const secret = authHeader?.replace('Bearer ', '').trim();
 
-    if (key !== process.env.CRON_SECRET) {
-        return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    if (secret !== process.env.CRON_SECRET) {
+        return err('Non autorisé', 401);
     }
 
     try {
         const tomorrow = addDays(new Date(), 1);
-        const startOfTomorrow = startOfDay(tomorrow);
-        const endOfTomorrow = endOfDay(tomorrow);
+        const start = startOfDay(tomorrow).toISOString();
+        const end = endOfDay(tomorrow).toISOString();
 
-        // Trouver les RDV confirmés pour demain qui n'ont pas encore été rappelés
-        const upcomingAppointments = await prisma.rendezVous.findMany({
-            where: {
-                date_rdv: {
-                    gte: startOfTomorrow,
-                    lte: endOfTomorrow,
-                },
-                statut: 'confirmed',
-            },
-            include: {
-                client: true,
-                salon: true,
-            },
-        });
+        const { data: appointments, error } = await supabaseAdmin
+            .from('rendez_vous')
+            .select(`
+                id,
+                heure_rdv,
+                date_rdv,
+                client:clients(telephone),
+                salon:salons(nom_salon)
+            `)
+            .in('statut', ['confirmed'])
+            .gte('date_rdv', start)
+            .lte('date_rdv', end);
+
+        if (error) throw error;
 
         let sentCount = 0;
-        for (const app of upcomingAppointments) {
-            if (app.client?.telephone) {
-                const success = await NotificationService.sendAppointmentReminder(
-                    app.client.telephone,
-                    app.salon.nom_salon,
-                    format(app.date_rdv, 'dd/MM/yyyy'),
-                    format(app.heure_rdv, 'HH:mm')
-                );
+        for (const app of appointments ?? []) {
+            const telephone = (app.client as any)?.telephone;
+            const nomSalon = (app.salon as any)?.nom_salon;
 
-                if (success) {
-                    await prisma.rendezVous.update({
-                        where: { id: app.id },
-                        data: { statut: 'reminded' },
-                    });
-                    sentCount++;
-                }
+            if (!telephone || !nomSalon) continue;
+
+            const dateFormatted = format(new Date(app.date_rdv), 'dd/MM/yyyy');
+            const heureFormatted = typeof app.heure_rdv === 'string'
+                ? app.heure_rdv.slice(0, 5)
+                : format(new Date(app.heure_rdv), 'HH:mm');
+
+            const success = await NotificationService.sendAppointmentReminder(
+                telephone, nomSalon, dateFormatted, heureFormatted
+            );
+
+            if (success) {
+                await supabaseAdmin
+                    .from('rendez_vous')
+                    .update({ statut: 'reminded' })
+                    .eq('id', app.id);
+                sentCount++;
             }
         }
 
-        return NextResponse.json({
-            success: true,
-            processed: upcomingAppointments.length,
-            sent: sentCount,
-        });
+        return ok({ processed: appointments?.length ?? 0, sent: sentCount });
     } catch (error: any) {
-        console.error('[Cron Error]', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        console.error('[Cron Reminders] Error:', error);
+        return err(error.message);
     }
 }

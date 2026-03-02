@@ -45,7 +45,7 @@ export default function AbsencesPage() {
 
     // Lock employee for collaborators
     useEffect(() => {
-        if (role === 'collaborator' && profile?.id) {
+        if (role === 'coiffeur' && profile?.id) {
             setNewAbsence(prev => ({ ...prev, employe_id: profile.id }))
         }
     }, [role, profile, showAddModal])
@@ -119,7 +119,7 @@ export default function AbsencesPage() {
         setSaving(true)
         try {
             const { error } = await supabase.from('absences').insert({
-                employe_id: role === 'collaborator' ? profile.id : newAbsence.employe_id,
+                employe_id: role === 'coiffeur' ? (profile?.id ?? '') : newAbsence.employe_id,
                 salon_id: salonId,
                 type: newAbsence.type,
                 date_debut: newAbsence.date_debut,
@@ -133,7 +133,7 @@ export default function AbsencesPage() {
 
             setShowAddModal(false)
             setNewAbsence({
-                employe_id: role === 'collaborator' ? profile.id : '',
+                employe_id: role === 'coiffeur' ? (profile?.id ?? '') : '',
                 type: 'Congé annuel',
                 date_debut: '',
                 date_fin: '',
@@ -292,7 +292,7 @@ export default function AbsencesPage() {
                                         <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                         <select
                                             required
-                                            disabled={role === 'collaborator'}
+                                            disabled={role === 'coiffeur'}
                                             className="w-full bg-slate-50 border-none rounded-2xl pl-12 pr-4 py-4 text-sm font-bold appearance-none shadow-inner disabled:opacity-70 disabled:bg-slate-100"
                                             value={newAbsence.employe_id}
                                             onChange={e => setNewAbsence({ ...newAbsence, employe_id: e.target.value })}

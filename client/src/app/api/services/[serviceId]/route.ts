@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
+import { ok, err } from '@/lib/api-response';
 
 export async function GET(
     req: Request,
@@ -8,33 +8,27 @@ export async function GET(
 ) {
     try {
         const { serviceId } = await params;
-        const service = await prisma.service.findUnique({
-            where: { id: serviceId },
-            include: { salon: true }
-        });
 
-        if (!service) {
-            return NextResponse.json({ success: false, error: 'Service non trouvé' }, { status: 404 });
+        const { data: service, error } = await supabaseAdmin
+            .from('services')
+            .select(`
+                *,
+                salon:salons(
+                    *,
+                    absences(*)
+                )
+            `)
+            .eq('id', serviceId)
+            .eq('salon.absences.statut', 'approved')
+            .single();
+
+        if (error || !service) {
+            return err('Service non trouvé', 404);
         }
 
-        // Fetch absences using Supabase to avoid Prisma client generation issues in dev
-        const { data: absences } = await supabase
-            .from('absences')
-            .select('*')
-            .eq('salon_id', service.salon_id)
-            .eq('statut', 'approved');
-
-        // Add absences to the salon object so the client code remains unchanged
-        const serviceWithAbsences = {
-            ...service,
-            salon: {
-                ...service.salon,
-                absences: absences || []
-            }
-        };
-
-        return NextResponse.json({ success: true, service: serviceWithAbsences });
+        return ok({ service });
     } catch (error: any) {
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        console.error('[service/:id] Error:', error);
+        return err(error.message);
     }
 }

@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { ok, err } from '@/lib/api-response'
 
 export async function POST(req: Request) {
     try {
-        // 1. Verify caller is manager
         const cookieStore = await cookies()
         const supabase = createServerClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,16 +19,15 @@ export async function POST(req: Request) {
         )
         const { data: { user: caller } } = await supabase.auth.getUser()
         if (!caller || caller.app_metadata?.role !== 'manager') {
-            return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+            return err('Accès refusé', 403)
         }
 
         const { prenom, nom, telephone, email } = await req.json()
 
         if (!nom || !prenom) {
-            return NextResponse.json({ error: 'Nom et prénom obligatoires' }, { status: 400 })
+            return err('Nom et prénom obligatoires', 400)
         }
 
-        // 2. Get manager's salon_id from profiles
         const { data: managerProfile } = await supabaseAdmin
             .from('profiles')
             .select('salon_id')
@@ -36,12 +35,11 @@ export async function POST(req: Request) {
             .single()
 
         if (!managerProfile?.salon_id) {
-            return NextResponse.json({ error: 'Salon du manager introuvable' }, { status: 400 })
+            return err('Salon du manager introuvable', 400)
         }
 
         const salon_id = managerProfile.salon_id
 
-        // 3a. If email provided → create auth account + send invite
         if (email) {
             const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
                 data: { nom, prenom, salon_id },
@@ -49,17 +47,15 @@ export async function POST(req: Request) {
             })
 
             if (inviteError) {
-                return NextResponse.json({ error: `Erreur invitation: ${inviteError.message}` }, { status: 500 })
+                return err(`Erreur invitation: ${inviteError.message}`, 500)
             }
 
             const newUserId = inviteData.user.id
 
-            // Set role in app_metadata
             await supabaseAdmin.auth.admin.updateUserById(newUserId, {
                 app_metadata: { role: 'coiffeur' },
             })
 
-            // Upsert profile
             await supabaseAdmin.from('profiles').upsert({
                 id: newUserId,
                 role: 'coiffeur',
@@ -70,35 +66,31 @@ export async function POST(req: Request) {
                 onboarding_completed: true,
             })
 
-            // Also add to employes table for scheduling compatibility
             await supabaseAdmin.from('employes').insert({
                 salon_id,
                 nom_employe: `${prenom} ${nom}`,
             })
 
-            return NextResponse.json({
-                success: true,
+            return ok({
                 message: `Coiffeur ajouté et email d'activation envoyé à ${email} !`,
             })
         }
 
-        // 3b. No email → employe sans compte auth
         const { error: employeError } = await supabaseAdmin.from('employes').insert({
             salon_id,
             nom_employe: `${prenom} ${nom}`,
         })
 
         if (employeError) {
-            return NextResponse.json({ error: `Erreur création employé: ${employeError.message}` }, { status: 500 })
+            return err(`Erreur création employé: ${employeError.message}`, 500)
         }
 
-        return NextResponse.json({
-            success: true,
+        return ok({
             message: 'Coiffeur ajouté à l\'équipe !',
         })
 
     } catch (error: any) {
         console.error('[create-coiffeur] Unexpected error:', error)
-        return NextResponse.json({ error: error.message || 'Erreur serveur' }, { status: 500 })
+        return err(error.message || 'Erreur serveur')
     }
 }

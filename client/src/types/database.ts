@@ -13,11 +13,12 @@ export interface Database {
                 Row: {
                     id: string
                     nom_salon: string
-                    adresse: string
-                    telephone: string
+                    adresse: string | null          // nullable : renseigné pendant l'onboarding
+                    telephone: string | null        // nullable : renseigné pendant l'onboarding
                     description: string | null
                     horaires_ouverture: Json | null
                     qr_code_url: string | null
+                    logo_url: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -61,7 +62,10 @@ export interface Database {
                     service_id: string
                     date_rdv: string
                     heure_rdv: string
-                    statut: 'booked' | 'cancelled' | 'completed' | 'no_show'
+                    statut: 'pending' | 'confirmed' | 'reminded' | 'completed' | 'no_show' | 'cancelled_client' | 'cancelled_salon'
+                    cancelled_by: string | null
+                    cancel_reason: string | null
+                    confirmed_at: string | null
                     created_at: string
                     updated_at: string
                 }
