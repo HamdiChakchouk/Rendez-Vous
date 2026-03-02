@@ -67,7 +67,7 @@ export default function ClientProfileScreen({ navigation, route }: any) {
                         <TouchableOpacity onPress={() => navigation.goBack()}>
                             <ArrowLeft size={22} color="#111" />
                         </TouchableOpacity>
-                        <Text style={styles.logo}>GLOWUP</Text>
+                        <Text style={styles.logo}>RESERVY</Text>
                         <View style={{ width: 22 }} />
                     </View>
 

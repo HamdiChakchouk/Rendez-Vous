@@ -165,7 +165,7 @@ export default function BookingWizardScreen({ navigation, route }: any) {
                 <TouchableOpacity onPress={() => step > 1 ? setStep(s => s - 1) : navigation.goBack()}>
                     <ArrowLeft size={22} color="#111" />
                 </TouchableOpacity>
-                <Text style={styles.logo}>GLOWUP</Text>
+                <Text style={styles.logo}>RESERVY</Text>
                 <View style={{ width: 22 }} />
             </View>
 

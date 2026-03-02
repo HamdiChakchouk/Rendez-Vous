@@ -57,7 +57,7 @@ export default function AuthScreen({ navigation, route }: any) {
 
                     {/* Logo */}
                     <View style={styles.logoContainer}>
-                        <Text style={styles.logo}>GLOWUP</Text>
+                        <Text style={styles.logo}>RESERVY</Text>
                         {isPro && (
                             <View style={styles.proBadge}>
                                 <Text style={styles.proBadgeText}>Professionnel</Text>

@@ -31,7 +31,7 @@ export default function FavoritesScreen({ navigation }: any) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.logo}>GLOWUP</Text>
+                    <Text style={styles.logo}>RESERVY</Text>
                 </View>
                 <View style={styles.emptyState}>
                     <Heart size={60} color="#E5E7EB" />
@@ -52,7 +52,7 @@ export default function FavoritesScreen({ navigation }: any) {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.logo}>GLOWUP</Text>
+                <Text style={styles.logo}>RESERVY</Text>
             </View>
 
             <Text style={styles.pageTitle}>Mes Favoris</Text>

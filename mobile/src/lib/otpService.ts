@@ -148,7 +148,7 @@ export async function sendOTP(phone: string): Promise<OTPResult> {
         // Envoyer le code brut par SMS (jamais le hash)
         const smsSent = await sendSMS(
             phone,
-            `Votre code de validation Rendez-Vous.tn: ${otp}`
+            `Votre code de validation Reservy: ${otp}`
         );
 
         if (!smsSent) {

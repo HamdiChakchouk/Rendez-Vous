@@ -60,7 +60,7 @@ export default function BookingsScreen({ navigation }: any) {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.logo}>GLOWUP</Text>
+                <Text style={styles.logo}>RESERVY</Text>
             </View>
             <FlatList
                 data={MOCK_BOOKINGS}

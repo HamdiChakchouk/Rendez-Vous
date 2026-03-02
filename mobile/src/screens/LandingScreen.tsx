@@ -29,7 +29,7 @@ export default function LandingScreen({ navigation }: any) {
                 <View style={styles.langBadge}>
                     <Text style={styles.langText}>FR</Text>
                 </View>
-                <Text style={styles.logo}>GLOWUP</Text>
+                <Text style={styles.logo}>RESERVY</Text>
                 <TouchableOpacity
                     style={styles.profileBtn}
                     onPress={() => navigation.navigate('Auth')}>

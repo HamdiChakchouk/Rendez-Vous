@@ -3,8 +3,8 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "Rendez-Vous | Réservation Salon de Beauté",
-  description: "Réservez vos soins de beauté en Tunisie en moins d'une minute.",
+  title: "Reservy | Réservation Salon de Beauté en Tunisie",
+  description: "Réservez vos soins de beauté en Tunisie en moins d'une minute avec Reservy.",
 };
 
 export default function RootLayout({

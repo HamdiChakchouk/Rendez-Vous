@@ -79,7 +79,7 @@ export default function HomeScreen({ navigation }: any) {
                     {/* Top Bar */}
                     <SafeAreaView style={styles.topBar}>
                         <Text style={styles.langTag}>FR</Text>
-                        <Text style={styles.logo}>GLOWUP</Text>
+                        <Text style={styles.logo}>RESERVY</Text>
                         <TouchableOpacity style={styles.profileBtn}>
                             <User size={20} color="#fff" />
                         </TouchableOpacity>

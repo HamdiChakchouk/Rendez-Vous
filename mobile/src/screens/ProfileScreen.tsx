@@ -22,7 +22,7 @@ export default function ProfileScreen({ navigation }: any) {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.logo}>GLOWUP</Text>
+                <Text style={styles.logo}>RESERVY</Text>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -32,7 +32,7 @@ export default function ProfileScreen({ navigation }: any) {
                         <User size={44} color="#9CA3AF" />
                     </View>
                     <Text style={styles.userName}>Mon compte</Text>
-                    <Text style={styles.userEmail}>client@glowup.tn</Text>
+                    <Text style={styles.userEmail}>client@RESERVY.tn</Text>
                     <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('ClientProfile')}>
                         <Text style={styles.editBtnText}>Modifier mon profil</Text>
                     </TouchableOpacity>

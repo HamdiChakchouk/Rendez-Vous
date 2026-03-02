@@ -93,7 +93,7 @@ export default function SearchScreen({ navigation }: any) {
                 <View style={styles.langBadge}>
                     <Text style={styles.langText}>FR</Text>
                 </View>
-                <Text style={styles.logo}>GLOWUP</Text>
+                <Text style={styles.logo}>RESERVY</Text>
                 <TouchableOpacity style={styles.profileBtn}>
                     <User size={20} color="#111" />
                 </TouchableOpacity>
