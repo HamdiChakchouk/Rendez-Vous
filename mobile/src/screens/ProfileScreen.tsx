@@ -88,18 +88,16 @@ export default function ProfileScreen({ navigation }: any) {
             label: 'Espace Salon',
             color: '#1152d4',
             bg: '#EEF2FF',
-            onPress: () => openWebUrl('/dashboard'),
+            onPress: () => navigation.navigate('SalonDashboard'),
             roles: ['super_admin', 'manager', 'coiffeur'],
-            badge: 'Web',
         },
         {
             icon: Shield,
             label: 'Administration',
             color: '#7C3AED',
             bg: '#F5F3FF',
-            onPress: () => openWebUrl('/admin'),
+            onPress: () => navigation.navigate('SalonDashboard'),
             roles: ['super_admin'],
-            badge: 'Web',
         },
         {
             icon: Bell,
@@ -161,15 +159,7 @@ export default function ProfileScreen({ navigation }: any) {
                                 </View>
                                 <Text style={styles.menuLabel}>{item.label}</Text>
                             </View>
-                            <View style={styles.menuItemRight}>
-                                {item.badge && (
-                                    <View style={styles.webBadge}>
-                                        <ExternalLink size={10} color="#6B7280" />
-                                        <Text style={styles.webBadgeText}>{item.badge}</Text>
-                                    </View>
-                                )}
-                                <ChevronRight size={18} color="#D1D5DB" />
-                            </View>
+                            <ChevronRight size={18} color="#D1D5DB" />
                         </TouchableOpacity>
                     ))}
                 </View>

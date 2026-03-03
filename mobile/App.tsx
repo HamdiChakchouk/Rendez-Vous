@@ -13,6 +13,9 @@ import ServicesListScreen from './src/screens/ServicesListScreen';
 import BookingWizardScreen from './src/screens/BookingWizardScreen';
 import OTPVerificationScreen from './src/screens/OTPVerificationScreen';
 import ConfirmationScreen from './src/screens/ConfirmationScreen';
+import SalonDashboardScreen from './src/screens/SalonDashboardScreen';
+import SalonConfigScreen from './src/screens/SalonConfigScreen';
+import SalonAbsencesScreen from './src/screens/SalonAbsencesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -35,6 +38,11 @@ export default function App() {
           {/* Auth / Profile */}
           <Stack.Screen name="Auth" component={AuthScreen} options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="ClientProfile" component={ClientProfileScreen} options={{ animation: 'slide_from_right' }} />
+
+          {/* Salon Dashboard (Pro) */}
+          <Stack.Screen name="SalonDashboard" component={SalonDashboardScreen} options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="SalonConfig" component={SalonConfigScreen} options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="SalonAbsences" component={SalonAbsencesScreen} options={{ animation: 'slide_from_right' }} />
         </Stack.Navigator>
         <StatusBar style="auto" />
       </NavigationContainer>
