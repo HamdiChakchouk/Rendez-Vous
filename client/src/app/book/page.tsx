@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Scissors, Sparkles, Clock, Star, ChevronRight } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import ProfileDropdown from '@/components/ProfileDropdown'
 
 export default function ServicesPage() {
     const [services, setServices] = useState<any[]>([])
@@ -28,8 +29,16 @@ export default function ServicesPage() {
     )
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6 pb-24">
-            <div className="max-w-md mx-auto">
+        <div className="min-h-screen bg-slate-50 pb-24">
+            {/* Top Bar */}
+            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-slate-100">
+                <div className="max-w-md mx-auto px-6 py-3 flex items-center justify-between">
+                    <span className="text-sm font-black tracking-widest uppercase text-slate-800">Reservy</span>
+                    <ProfileDropdown />
+                </div>
+            </header>
+
+            <div className="max-w-md mx-auto p-6">
                 <header className="mb-10 text-center">
                     <h1 className="text-3xl font-black text-slate-900 italic mb-2 tracking-tighter uppercase">Nos Services</h1>
                     <p className="text-slate-500 text-sm font-medium">Choisissez votre soin pour continuer</p>
