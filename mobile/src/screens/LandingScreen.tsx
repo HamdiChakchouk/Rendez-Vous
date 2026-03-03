@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -9,12 +9,29 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User } from 'lucide-react-native';
+import { supabase } from '../lib/supabase';
 
 const { width, height } = Dimensions.get('window');
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=1200&auto=format&fit=crop';
 
 export default function LandingScreen({ navigation }: any) {
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setIsLoggedIn(!!user);
+        });
+    }, []);
+
+    function handleProfilePress() {
+        if (isLoggedIn) {
+            navigation.navigate('MainTabs', { screen: 'Profil' });
+        } else {
+            navigation.navigate('Auth');
+        }
+    }
+
     return (
         <ImageBackground
             source={{ uri: HERO_IMAGE }}
@@ -32,7 +49,7 @@ export default function LandingScreen({ navigation }: any) {
                 <Text style={styles.logo}>RESERVY</Text>
                 <TouchableOpacity
                     style={styles.profileBtn}
-                    onPress={() => navigation.navigate('Auth')}>
+                    onPress={handleProfilePress}>
                     <User size={20} color="#fff" />
                 </TouchableOpacity>
             </SafeAreaView>
