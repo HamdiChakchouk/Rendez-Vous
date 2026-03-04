@@ -34,6 +34,7 @@ export default function SalonDashboardScreen({ navigation }: any) {
     const [refreshing, setRefreshing] = useState(false);
     const [salonId, setSalonId] = useState<string | null>(null);
     const [salonName, setSalonName] = useState('Mon Salon');
+    const [userRole, setUserRole] = useState<string | null>(null);
     const [appointments, setAppointments] = useState<any[]>([]);
     const [services, setServices] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
@@ -50,8 +51,9 @@ export default function SalonDashboardScreen({ navigation }: any) {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { data: profile } = await supabase.from('profiles').select('salon_id').eq('id', user.id).maybeSingle();
+            const { data: profile } = await supabase.from('profiles').select('salon_id, role').eq('id', user.id).maybeSingle();
             if (!profile?.salon_id) { setLoading(false); return; }
+            setUserRole(profile.role ?? null);
 
             const sid = profile.salon_id;
             setSalonId(sid);
@@ -149,17 +151,23 @@ export default function SalonDashboardScreen({ navigation }: any) {
                 </TouchableOpacity>
                 <View style={{ flex: 1, marginLeft: 14 }}>
                     <Text style={styles.salonName}>{salonName}</Text>
-                    <Text style={styles.headerSub}>Dashboard Manager</Text>
+                    <Text style={styles.headerSub}>
+                        {userRole === 'coiffeur' ? 'Espace Collaborateur' : 'Dashboard Manager'}
+                    </Text>
                 </View>
-                <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonConfig')}>
-                    <Settings size={20} color="#374151" />
-                </TouchableOpacity>
+                {userRole !== 'coiffeur' && (
+                    <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonConfig')}>
+                        <Settings size={20} color="#374151" />
+                    </TouchableOpacity>
+                )}
                 <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonAbsences')}>
                     <Scissors size={20} color="#374151" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonSettings')}>
-                    <User size={20} color="#374151" />
-                </TouchableOpacity>
+                {userRole !== 'coiffeur' && (
+                    <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonSettings')}>
+                        <User size={20} color="#374151" />
+                    </TouchableOpacity>
+                )}
             </View>
 
             {/* Stats Row */}
