@@ -16,6 +16,7 @@ import ConfirmationScreen from './src/screens/ConfirmationScreen';
 import SalonDashboardScreen from './src/screens/SalonDashboardScreen';
 import SalonConfigScreen from './src/screens/SalonConfigScreen';
 import SalonAbsencesScreen from './src/screens/SalonAbsencesScreen';
+import SalonSettingsScreen from './src/screens/SalonSettingsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -43,6 +44,7 @@ export default function App() {
           <Stack.Screen name="SalonDashboard" component={SalonDashboardScreen} options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="SalonConfig" component={SalonConfigScreen} options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="SalonAbsences" component={SalonAbsencesScreen} options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="SalonSettings" component={SalonSettingsScreen} options={{ animation: 'slide_from_right' }} />
         </Stack.Navigator>
         <StatusBar style="auto" />
       </NavigationContainer>

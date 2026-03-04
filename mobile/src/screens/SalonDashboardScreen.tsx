@@ -157,6 +157,9 @@ export default function SalonDashboardScreen({ navigation }: any) {
                 <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonAbsences')}>
                     <Scissors size={20} color="#374151" />
                 </TouchableOpacity>
+                <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonSettings')}>
+                    <User size={20} color="#374151" />
+                </TouchableOpacity>
             </View>
 
             {/* Stats Row */}
