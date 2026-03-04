@@ -103,6 +103,7 @@ export default function SalonAbsencesScreen({ navigation }: any) {
     const [openingHours, setOpeningHours] = useState<any>(null);
     const [absences, setAbsences] = useState<Absence[]>([]);
     const [employees, setEmployees] = useState<{ id: string; nom_employe: string }[]>([]);
+    const [currentEmployeId, setCurrentEmployeId] = useState<string | null>(null);
 
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
@@ -158,13 +159,23 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                 })));
             }
             if (empRes.data) setEmployees(empRes.data);
+
+            // Trouver l'ID employé correspondant à l'utilisateur courant
+            const { data: myEmp } = await supabase
+                .from('employes')
+                .select('id')
+                .eq('salon_id', profile.salon_id)
+                .eq('profile_id', user.id)
+                .maybeSingle();
+
+            if (myEmp) setCurrentEmployeId(myEmp.id);
         } catch (e) { console.error(e); } finally { setLoading(false); }
     }
 
     // ── Open Add Modal ─────────────────────────────────────────────────────────
     function openAdd() {
         setForm({
-            employe_id: role === 'coiffeur' ? (profileId || '') : '',
+            employe_id: currentEmployeId || (role === 'coiffeur' ? profileId || '' : ''),
             type: 'Congé annuel', date_debut: '', date_fin: '',
             is_half_day: false, heure_debut: '', heure_fin: '', commentaire: '',
         });
@@ -177,11 +188,12 @@ export default function SalonAbsencesScreen({ navigation }: any) {
         if (!form.date_debut) return 'Sélectionnez la date de début.';
         if (!form.date_fin) return 'Sélectionnez la date de fin.';
 
-        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const now = new Date();
+        const todayAtZero = new Date(); todayAtZero.setHours(0, 0, 0, 0);
         const start = new Date(form.date_debut);
         const end = new Date(form.date_fin);
 
-        if (start < today) return 'Impossible de poser un congé pour une date passée.';
+        if (start < todayAtZero) return 'Impossible de poser un congé pour une date passée.';
         if (end < start) return 'La date de fin doit être après la date de début.';
 
         // Vérif horaires salon
@@ -200,6 +212,15 @@ export default function SalonAbsencesScreen({ navigation }: any) {
         if (form.is_half_day) {
             if (!form.heure_debut) return 'Indiquez l\'heure de début d\'absence.';
             if (!form.heure_fin) return 'Indiquez l\'heure de reprise.';
+
+            // Si c'est aujourd'hui, on vérifie que l'heure de début n'est pas passée
+            const todayStr = now.toISOString().split('T')[0];
+            if (form.date_debut === todayStr) {
+                const [h, m] = form.heure_debut.split(':').map(Number);
+                const debutTime = new Date(); debutTime.setHours(h, m, 0, 0);
+                if (debutTime < now) return 'L\'heure de début est déjà passée.';
+            }
+
             if (form.heure_fin <= form.heure_debut)
                 return 'L\'heure de reprise doit être après l\'heure de début.';
         }
