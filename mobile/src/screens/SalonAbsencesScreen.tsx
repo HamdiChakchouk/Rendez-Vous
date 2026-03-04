@@ -255,7 +255,6 @@ export default function SalonAbsencesScreen({ navigation }: any) {
     }
 
     async function confirmReject() {
-        if (!rejectReason.trim()) { Alert.alert('Requis', 'Vous devez saisir un motif de refus.'); return; }
         if (!rejectingId) return;
         await supabase.from('absences').update({
             statut: 'rejected',
