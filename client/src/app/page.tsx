@@ -79,6 +79,15 @@ export default function Home() {
             </div>
           </div>
 
+          {/* Pro Link */}
+          <div className="pt-4">
+            <Link href="/pro" className="text-sm font-semibold text-slate-400 hover:text-primary transition-colors flex items-center justify-center gap-2 group">
+              Professionnel de la beauté ?
+              <span className="text-slate-600 group-hover:text-primary underline decoration-slate-300 underline-offset-4">Rejoignez Reservy</span>
+              <Sparkles size={14} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+            </Link>
+          </div>
+
           {/* Footer */}
           <p className="text-[11px] font-medium text-slate-400 uppercase tracking-[0.2em]">
             Reservy • Design Premium

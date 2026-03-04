@@ -67,7 +67,7 @@ export default function LandingScreen({ navigation }: any) {
 
                 <TouchableOpacity
                     style={styles.secondaryBtn}
-                    onPress={() => navigation.navigate('Auth', { role: 'pro' })}>
+                    onPress={() => navigation.navigate('ProLanding')}>
                     <Text style={styles.secondaryBtnText}>Je suis un professionnel de beauté</Text>
                 </TouchableOpacity>
             </View>

@@ -2,12 +2,12 @@
 
 import {
     BarChart3, Building2, Users2, ShieldAlert, TrendingUp, Search,
-    Menu, Loader2, Plus, Mail, Phone, User, X, CheckCircle, Clock
+    Menu, Loader2, Plus, Mail, Phone, User, X, CheckCircle, Clock, Bell
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
-type Tab = 'dashboard' | 'salons' | 'users' | 'security' | 'add-manager'
+type Tab = 'dashboard' | 'salons' | 'users' | 'security' | 'add-manager' | 'demandes'
 
 interface ManagerForm {
     prenom: string
@@ -25,6 +25,8 @@ export default function AdminPage() {
     const [salons, setSalons] = useState<any[]>([])
     const [users, setUsers] = useState<any[]>([])
     const [managers, setManagers] = useState<any[]>([])
+    const [requests, setRequests] = useState<any[]>([])
+    const [requestLoading, setRequestLoading] = useState<string | null>(null)
 
     // Add Manager form state
     const [form, setForm] = useState<ManagerForm>({ prenom: '', nom: '', email: '', telephone: '', nom_salon: '' })
@@ -56,6 +58,13 @@ export default function AdminPage() {
                 newUsers: (clientsData || []).length,
                 revenue: "—",
             })
+
+            // Subscription requests
+            const reqRes = await fetch('/api/subscription-requests')
+            if (reqRes.ok) {
+                const reqData = await reqRes.json()
+                setRequests(reqData.data?.requests || [])
+            }
         } catch (error) {
             console.error('Error fetching admin data:', error)
         } finally {
@@ -268,7 +277,101 @@ export default function AdminPage() {
         </div>
     )
 
+    const STATUS_COLORS: Record<string, string> = {
+        pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        approved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
+    }
+    const STATUS_LABELS: Record<string, string> = { pending: '⏳ En attente', approved: '✅ Approuvé', rejected: '❌ Refusé' }
+
+    async function handleRequest(id: string, action: 'approve' | 'reject', motif?: string) {
+        setRequestLoading(id)
+        try {
+            const res = await fetch(`/api/subscription-requests/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, motif_refus: motif }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error)
+            alert(data.data?.message || 'Traité avec succès')
+            fetchData()
+        } catch (e: any) {
+            alert('Erreur : ' + e.message)
+        } finally {
+            setRequestLoading(null)
+        }
+    }
+
+    const renderDemandes = () => (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-3xl font-bold italic">Demandes d'abonnement</h2>
+                    <p className="text-slate-400 text-sm mt-1">Professionnels souhaitant rejoindre Reservy</p>
+                </div>
+                <div className="flex gap-3">
+                    <span className="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full text-xs font-bold">
+                        {requests.filter(r => r.statut === 'pending').length} en attente
+                    </span>
+                </div>
+            </div>
+
+            {requests.length === 0 ? (
+                <div className="bg-slate-800 rounded-3xl border border-slate-700 p-16 text-center text-slate-500">
+                    <Bell size={40} className="mx-auto mb-4 opacity-30" />
+                    <p className="font-semibold">Aucune demande pour le moment</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {requests.map(r => (
+                        <div key={r.id} className="bg-slate-800 rounded-2xl border border-slate-700 p-5">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <p className="font-bold text-white">{r.nom_prenom}</p>
+                                        <span className={`px-2 py-0.5 border rounded-full text-[10px] font-bold ${STATUS_COLORS[r.statut]}`}>
+                                            {STATUS_LABELS[r.statut]}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-slate-400">
+                                        <div><span className="text-slate-500 uppercase tracking-wider text-[10px]">Salon</span><br /><span className="text-slate-200 font-semibold">{r.nom_salon}</span></div>
+                                        <div><span className="text-slate-500 uppercase tracking-wider text-[10px]">Email</span><br /><span className="text-slate-200 font-semibold">{r.email}</span></div>
+                                        <div><span className="text-slate-500 uppercase tracking-wider text-[10px]">Ville</span><br /><span className="text-slate-200 font-semibold">{r.ville || '—'}</span></div>
+                                        <div><span className="text-slate-500 uppercase tracking-wider text-[10px]">Type</span><br /><span className="text-slate-200 font-semibold capitalize">{r.type_salon?.replace('_', ' ') || '—'}</span></div>
+                                    </div>
+                                    {r.message && <p className="mt-3 text-slate-400 text-xs italic border-l-2 border-slate-600 pl-3">"{r.message}"</p>}
+                                    {r.motif_refus && <p className="mt-3 text-red-400 text-xs bg-red-500/5 border border-red-500/10 rounded-xl px-3 py-2">Motif refus : {r.motif_refus}</p>}
+                                    <p className="text-slate-600 text-xs mt-3">{new Date(r.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                                </div>
+                                {r.statut === 'pending' && (
+                                    <div className="flex flex-col gap-2 shrink-0">
+                                        <button disabled={requestLoading === r.id}
+                                            onClick={() => handleRequest(r.id, 'approve')}
+                                            className="flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white border border-emerald-500/20 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50">
+                                            {requestLoading === r.id ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                                            Approuver
+                                        </button>
+                                        <button disabled={requestLoading === r.id}
+                                            onClick={() => {
+                                                const motif = prompt('Motif de refus (optionnel) :') || undefined
+                                                handleRequest(r.id, 'reject', motif)
+                                            }}
+                                            className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/20 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50">
+                                            <X size={14} /> Refuser
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+
     const renderSalons = () => (
+
         <div className="space-y-6">
             <h2 className="text-3xl font-bold italic">Gestion des Salons</h2>
             <div className="bg-slate-800 rounded-3xl border border-slate-700 overflow-hidden shadow-2xl">
@@ -376,6 +479,7 @@ export default function AdminPage() {
 
     const navItems = [
         { tab: 'dashboard' as Tab, icon: BarChart3, label: 'Dashboard' },
+        { tab: 'demandes' as Tab, icon: Bell, label: 'Demandes', badge: requests.filter(r => r.statut === 'pending').length },
         { tab: 'add-manager' as Tab, icon: Plus, label: 'Ajouter Manager' },
         { tab: 'salons' as Tab, icon: Building2, label: 'Salons' },
         { tab: 'users' as Tab, icon: Users2, label: 'Utilisateurs' },
@@ -394,11 +498,13 @@ export default function AdminPage() {
                     VibeRdv <span className="text-primary text-xs not-italic">ADMIN</span>
                 </h1>
                 <nav className="space-y-2 flex-1">
-                    {navItems.map(({ tab, icon: Icon, label }) => (
+                    {navItems.map(({ tab, icon: Icon, label, badge }: any) => (
                         <button key={tab} onClick={() => { setActiveTab(tab); setSidebarOpen(false) }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === tab ? 'bg-primary/10 text-primary border-r-4 border-primary font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-900'}`}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === tab ? 'bg-primary/10 text-primary border-r-4 border-primary font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                                }`}
                         >
                             <Icon size={20} /> {label}
+                            {badge > 0 && <span className="ml-auto bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">{badge}</span>}
                         </button>
                     ))}
                 </nav>
@@ -415,6 +521,7 @@ export default function AdminPage() {
                 ) : (
                     <>
                         {activeTab === 'dashboard' && renderDashboard()}
+                        {activeTab === 'demandes' && renderDemandes()}
                         {activeTab === 'add-manager' && renderAddManager()}
                         {activeTab === 'salons' && renderSalons()}
                         {activeTab === 'users' && renderUsers()}
