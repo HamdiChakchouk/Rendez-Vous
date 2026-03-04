@@ -35,6 +35,7 @@ export default function SalonDashboardScreen({ navigation }: any) {
     const [salonId, setSalonId] = useState<string | null>(null);
     const [salonName, setSalonName] = useState('Mon Salon');
     const [userRole, setUserRole] = useState<string | null>(null);
+    const [employeId, setEmployeId] = useState<string | null>(null);
     const [appointments, setAppointments] = useState<any[]>([]);
     const [services, setServices] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
@@ -56,7 +57,22 @@ export default function SalonDashboardScreen({ navigation }: any) {
             setUserRole(profile.role ?? null);
 
             const sid = profile.salon_id;
+            const role = profile.role ?? null;
             setSalonId(sid);
+            setUserRole(role);
+
+            // Pour un coiffeur, trouver son employe_id lié
+            let linkedEmployeId: string | null = null;
+            if (role === 'coiffeur') {
+                const { data: emp } = await supabase
+                    .from('employes')
+                    .select('id')
+                    .eq('salon_id', sid)
+                    .eq('profile_id', user.id)
+                    .maybeSingle();
+                linkedEmployeId = emp?.id ?? null;
+                setEmployeId(linkedEmployeId);
+            }
 
             const [salonRes, svcsRes, empsRes] = await Promise.all([
                 supabase.from('salons').select('nom_salon').eq('id', sid).single(),
@@ -69,18 +85,30 @@ export default function SalonDashboardScreen({ navigation }: any) {
             if (empsRes.data) setEmployees(empsRes.data);
 
             const today = new Date().toISOString().split('T')[0];
-            const { data: apts } = await supabase
+
+            // Construire la requête RDV selon le rôle
+            let aptsQuery = supabase
                 .from('rendez_vous')
                 .select('*, client:clients(nom_client, telephone), service:services(nom_service, prix), employe:employes(nom_employe)')
                 .eq('salon_id', sid)
                 .eq('date_rdv', today)
                 .order('heure_rdv');
 
+            // Le coiffeur ne voit que ses propres RDV
+            if (role === 'coiffeur' && linkedEmployeId) {
+                aptsQuery = aptsQuery.eq('employe_id', linkedEmployeId);
+            }
+
+            const { data: apts } = await aptsQuery;
+
             if (apts) {
                 setAppointments(apts);
-                const ca = apts.filter(a => !a.statut.startsWith('cancelled') && a.statut !== 'no_show')
-                    .reduce((s, a) => s + Number(a.service?.prix || 0), 0);
-                setStats({ rdv: apts.length, ca });
+                // Les stats (CA, total) ne sont calculées que pour les managers
+                if (role !== 'coiffeur') {
+                    const ca = apts.filter(a => !a.statut.startsWith('cancelled') && a.statut !== 'no_show')
+                        .reduce((s, a) => s + Number(a.service?.prix || 0), 0);
+                    setStats({ rdv: apts.length, ca });
+                }
             }
         } catch (e) { console.error(e); }
         finally { setLoading(false); setRefreshing(false); }
@@ -170,19 +198,21 @@ export default function SalonDashboardScreen({ navigation }: any) {
                 )}
             </View>
 
-            {/* Stats Row */}
-            <View style={styles.statsRow}>
-                <View style={styles.statCard}>
-                    <Calendar size={18} color="#1152d4" />
-                    <Text style={styles.statValue}>{stats.rdv}</Text>
-                    <Text style={styles.statLabel}>RDV Aujourd'hui</Text>
+            {/* Stats Row — managers uniquement */}
+            {(userRole === 'manager' || userRole === 'super_admin') && (
+                <View style={styles.statsRow}>
+                    <View style={styles.statCard}>
+                        <Calendar size={18} color="#1152d4" />
+                        <Text style={styles.statValue}>{stats.rdv}</Text>
+                        <Text style={styles.statLabel}>RDV Aujourd'hui</Text>
+                    </View>
+                    <View style={[styles.statCard, { borderColor: '#D1FAE5' }]}>
+                        <TrendingUp size={18} color="#10B981" />
+                        <Text style={[styles.statValue, { color: '#10B981' }]}>{stats.ca} DT</Text>
+                        <Text style={styles.statLabel}>CA Journalier</Text>
+                    </View>
                 </View>
-                <View style={[styles.statCard, { borderColor: '#D1FAE5' }]}>
-                    <TrendingUp size={18} color="#10B981" />
-                    <Text style={[styles.statValue, { color: '#10B981' }]}>{stats.ca} DT</Text>
-                    <Text style={styles.statLabel}>CA Journalier</Text>
-                </View>
-            </View>
+            )}
 
             {/* Appointments */}
             <View style={styles.sectionHeader}>
