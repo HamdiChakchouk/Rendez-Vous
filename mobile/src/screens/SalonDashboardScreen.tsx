@@ -155,7 +155,7 @@ export default function SalonDashboardScreen({ navigation }: any) {
                         {userRole === 'coiffeur' ? 'Espace Collaborateur' : 'Dashboard Manager'}
                     </Text>
                 </View>
-                {userRole !== 'coiffeur' && (
+                {(userRole === 'manager' || userRole === 'super_admin') && (
                     <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonConfig')}>
                         <Settings size={20} color="#374151" />
                     </TouchableOpacity>
@@ -163,7 +163,7 @@ export default function SalonDashboardScreen({ navigation }: any) {
                 <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonAbsences')}>
                     <Scissors size={20} color="#374151" />
                 </TouchableOpacity>
-                {userRole !== 'coiffeur' && (
+                {(userRole === 'manager' || userRole === 'super_admin') && (
                     <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonSettings')}>
                         <User size={20} color="#374151" />
                     </TouchableOpacity>
