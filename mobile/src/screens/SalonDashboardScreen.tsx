@@ -152,7 +152,7 @@ export default function SalonDashboardScreen({ navigation }: any) {
                 <View style={{ flex: 1, marginLeft: 14 }}>
                     <Text style={styles.salonName}>{salonName}</Text>
                     <Text style={styles.headerSub}>
-                        {userRole === 'coiffeur' ? 'Espace Collaborateur' : 'Dashboard Manager'}
+                        {userRole === 'coiffeur' ? 'Espace Collaborateur' : (userRole === 'manager' || userRole === 'super_admin') ? 'Dashboard Manager' : ''}
                     </Text>
                 </View>
                 {(userRole === 'manager' || userRole === 'super_admin') && (
