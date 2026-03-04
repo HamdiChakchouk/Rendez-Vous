@@ -136,7 +136,7 @@ export default function SalonAbsencesScreen({ navigation }: any) {
             setProfileId(user.id);
 
             const { data: profile } = await supabase
-                .from('profiles').select('salon_id, role').eq('id', user.id).maybeSingle();
+                .from('profiles').select('salon_id, role, nom, prenom').eq('id', user.id).maybeSingle();
             if (!profile?.salon_id) { setLoading(false); return; }
 
             setSalonId(profile.salon_id);
@@ -158,17 +158,26 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                     ...a, nom_employe: a.employes?.nom_employe || '?',
                 })));
             }
-            if (empRes.data) setEmployees(empRes.data);
+            if (empRes.data) {
+                setEmployees(empRes.data);
 
-            // Trouver l'ID employé correspondant à l'utilisateur courant
-            const { data: myEmp } = await supabase
-                .from('employes')
-                .select('id')
-                .eq('salon_id', profile.salon_id)
-                .eq('profile_id', user.id)
-                .maybeSingle();
+                // Trouver l'ID employé correspondant à l'utilisateur courant (par profile_id ou par nom en dernier recours)
+                const { data: myEmp } = await supabase
+                    .from('employes')
+                    .select('id')
+                    .eq('salon_id', profile.salon_id)
+                    .eq('profile_id', user.id)
+                    .maybeSingle();
 
-            if (myEmp) setCurrentEmployeId(myEmp.id);
+                if (myEmp) {
+                    setCurrentEmployeId(myEmp.id);
+                } else if (profile.role === 'manager') {
+                    // Si on ne trouve pas par profile_id, peut-être que le manager est dans la table par son nom?
+                    const myName = `${profile.prenom || ''} ${profile.nom || ''}`.trim();
+                    const match = empRes.data.find((e: any) => e.nom_employe.toLowerCase() === myName.toLowerCase());
+                    if (match) setCurrentEmployeId(match.id);
+                }
+            }
         } catch (e) { console.error(e); } finally { setLoading(false); }
     }
 
@@ -189,7 +198,7 @@ export default function SalonAbsencesScreen({ navigation }: any) {
         if (!form.date_fin) return 'Sélectionnez la date de fin.';
 
         const now = new Date();
-        const todayAtZero = new Date(); todayAtZero.setHours(0, 0, 0, 0);
+        const todayAtZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const start = new Date(form.date_debut);
         const end = new Date(form.date_fin);
 
@@ -214,10 +223,10 @@ export default function SalonAbsencesScreen({ navigation }: any) {
             if (!form.heure_fin) return 'Indiquez l\'heure de reprise.';
 
             // Si c'est aujourd'hui, on vérifie que l'heure de début n'est pas passée
-            const todayStr = now.toISOString().split('T')[0];
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             if (form.date_debut === todayStr) {
                 const [h, m] = form.heure_debut.split(':').map(Number);
-                const debutTime = new Date(); debutTime.setHours(h, m, 0, 0);
+                const debutTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
                 if (debutTime < now) return 'L\'heure de début est déjà passée.';
             }
 
@@ -313,7 +322,8 @@ export default function SalonAbsencesScreen({ navigation }: any) {
             const cur = new Date(start);
             cur.setDate(cur.getDate() + 1);
             while (cur < end) {
-                marked[cur.toISOString().split('T')[0]] = { color: '#D1D5DB', textColor: '#111' };
+                const curStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+                marked[curStr] = { color: '#D1D5DB', textColor: '#111' };
                 cur.setDate(cur.getDate() + 1);
             }
             marked[form.date_fin] = { endingDay: true, color: '#111', textColor: '#fff' };
