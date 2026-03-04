@@ -37,11 +37,25 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string; i
 };
 
 // ─── Time Picker ──────────────────────────────────────────────────────────────
-function TimePicker({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+function TimePicker({ value, onChange, label, selectedDate, isReprise }: { value: string; onChange: (v: string) => void; label: string; selectedDate?: string; isReprise?: boolean }) {
     const [visible, setVisible] = useState(false);
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const isToday = selectedDate === todayStr;
+
     const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
     const minutes = ['00', '15', '30', '45'];
     const [hh, mm] = value ? value.split(':') : ['09', '00'];
+
+    const filteredHours = hours.filter(h => {
+        if (!isToday) return true;
+        return Number(h) >= now.getHours();
+    });
+
+    const filteredMinutes = minutes.filter(m => {
+        if (!isToday || Number(hh) > now.getHours()) return true;
+        return Number(m) > now.getMinutes();
+    });
 
     return (
         <>
@@ -62,7 +76,7 @@ function TimePicker({ value, onChange, label }: { value: string; onChange: (v: s
                             <View style={{ flex: 1 }}>
                                 <Text style={s.timeColLabel}>Heure</Text>
                                 <ScrollView style={{ height: 160 }} showsVerticalScrollIndicator={false}>
-                                    {hours.map(h => (
+                                    {filteredHours.map(h => (
                                         <TouchableOpacity key={h} onPress={() => onChange(`${h}:${mm}`)}
                                             style={[s.timeOption, hh === h && s.timeOptionActive]}>
                                             <Text style={[s.timeOptionText, hh === h && { color: '#fff' }]}>{h}h</Text>
@@ -75,7 +89,7 @@ function TimePicker({ value, onChange, label }: { value: string; onChange: (v: s
                             <View style={{ flex: 1 }}>
                                 <Text style={s.timeColLabel}>Min</Text>
                                 <ScrollView style={{ height: 160 }} showsVerticalScrollIndicator={false}>
-                                    {minutes.map(m => (
+                                    {filteredMinutes.map(m => (
                                         <TouchableOpacity key={m} onPress={() => onChange(`${hh}:${m}`)}
                                             style={[s.timeOption, mm === m && s.timeOptionActive]}>
                                             <Text style={[s.timeOptionText, mm === m && { color: '#fff' }]}>{m}</Text>
@@ -171,15 +185,24 @@ export default function SalonAbsencesScreen({ navigation }: any) {
 
                 if (myEmp) {
                     setCurrentEmployeId(myEmp.id);
-                } else if (profile.role === 'manager') {
-                    // Si on ne trouve pas par profile_id, peut-être que le manager est dans la table par son nom?
+                } else if (profile.role === 'manager' || profile.role === 'coiffeur') {
+                    // Fallback par nom si profile_id n'est pas encore setté (migration rétroactive)
                     const myName = `${profile.prenom || ''} ${profile.nom || ''}`.trim();
                     const match = empRes.data.find((e: any) => e.nom_employe.toLowerCase() === myName.toLowerCase());
-                    if (match) setCurrentEmployeId(match.id);
+                    if (match) {
+                        setCurrentEmployeId(match.id);
+                        // Tentative de liaison automatique pour les prochaines fois
+                        supabase.from('employes').update({ profile_id: user.id }).eq('id', match.id).then();
+                    }
                 }
             }
         } catch (e) { console.error(e); } finally { setLoading(false); }
     }
+
+    const getTodayStr = () => {
+        const n = new Date();
+        return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+    };
 
     // ── Open Add Modal ─────────────────────────────────────────────────────────
     function openAdd() {
@@ -223,11 +246,14 @@ export default function SalonAbsencesScreen({ navigation }: any) {
             if (!form.heure_fin) return 'Indiquez l\'heure de reprise.';
 
             // Si c'est aujourd'hui, on vérifie que l'heure de début n'est pas passée
-            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const todayStr = getTodayStr();
             if (form.date_debut === todayStr) {
                 const [h, m] = form.heure_debut.split(':').map(Number);
                 const debutTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m, 0, 0);
-                if (debutTime < now) return 'L\'heure de début est déjà passée.';
+                if (debutTime < now) {
+                    console.log('Validation failed: debutTime < now', { debutTime, now });
+                    return "L'heure de début est déjà passée.";
+                }
             }
 
             if (form.heure_fin <= form.heure_debut)
@@ -331,7 +357,7 @@ export default function SalonAbsencesScreen({ navigation }: any) {
         return marked;
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayStr();
 
     // ── Render Card ────────────────────────────────────────────────────────────
     function renderAbsence({ item: abs }: { item: Absence }) {
@@ -509,11 +535,11 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
                                 <View style={{ flex: 1 }}>
                                     <Text style={s.fieldLabel}>Heure de début *</Text>
-                                    <TimePicker value={form.heure_debut} onChange={v => setForm({ ...form, heure_debut: v })} label="Choisir" />
+                                    <TimePicker value={form.heure_debut} onChange={v => setForm({ ...form, heure_debut: v })} label="Choisir" selectedDate={form.date_debut} />
                                 </View>
                                 <View style={{ flex: 1 }}>
                                     <Text style={s.fieldLabel}>Heure de reprise *</Text>
-                                    <TimePicker value={form.heure_fin} onChange={v => setForm({ ...form, heure_fin: v })} label="Choisir" />
+                                    <TimePicker value={form.heure_fin} onChange={v => setForm({ ...form, heure_fin: v })} label="Choisir" selectedDate={form.date_debut} />
                                 </View>
                             </View>
                         )}

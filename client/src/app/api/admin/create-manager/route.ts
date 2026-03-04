@@ -67,6 +67,12 @@ export async function POST(req: Request) {
                 onboarding_completed: false,
             })
 
+        await supabaseAdmin.from('employes').insert({
+            salon_id: salon.id,
+            nom_employe: `${prenom} ${nom}`,
+            profile_id: newUserId,
+        })
+
         await supabaseAdmin
             .from('salons')
             .update({ manager_id: newUserId })
