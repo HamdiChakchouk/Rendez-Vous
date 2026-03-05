@@ -69,7 +69,7 @@ export async function POST(req: Request) {
             await supabaseAdmin.from('employes').insert({
                 salon_id,
                 nom_employe: `${prenom} ${nom}`,
-                profile_id: newUserId,
+                user_id: newUserId,
             })
 
             return ok({
