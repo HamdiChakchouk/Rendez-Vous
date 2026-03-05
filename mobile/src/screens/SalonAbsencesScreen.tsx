@@ -139,20 +139,42 @@ export default function SalonAbsencesScreen({ navigation }: any) {
         commentaire: '',
     });
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => {
+        console.log('[SalonAbsencesScreen] Mounting...');
+        fetchData();
+    }, []);
+
+    const normalizeName = (name: string) => {
+        return name
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim();
+    };
 
     // ── Fetch ──────────────────────────────────────────────────────────────────
     async function fetchData() {
         setLoading(true);
+        console.log('[fetchData] Starting...');
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) {
+                console.warn('[fetchData] No user session found');
+                return;
+            }
             setProfileId(user.id);
+            console.log('[fetchData] User ID:', user.id);
 
             const { data: profile } = await supabase
                 .from('profiles').select('salon_id, role, nom, prenom').eq('id', user.id).maybeSingle();
-            if (!profile?.salon_id) { setLoading(false); return; }
 
+            if (!profile?.salon_id) {
+                console.error('[fetchData] Salon ID not found for profile:', profile);
+                setLoading(false);
+                return;
+            }
+
+            console.log('[fetchData] Profile loaded:', { role: profile.role, name: `${profile.prenom} ${profile.nom}`, salonId: profile.salon_id });
             setSalonId(profile.salon_id);
             setRole(profile.role);
 
@@ -162,7 +184,7 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                     .select('*, employes(nom_employe)')
                     .eq('salon_id', profile.salon_id)
                     .order('created_at', { ascending: false }),
-                supabase.from('employes').select('id, nom_employe').eq('salon_id', profile.salon_id),
+                supabase.from('employes').select('id, nom_employe, profile_id').eq('salon_id', profile.salon_id),
             ]);
 
             if (salonRes.data?.horaires_ouverture) setOpeningHours(salonRes.data.horaires_ouverture);
@@ -172,31 +194,43 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                     ...a, nom_employe: a.employes?.nom_employe || '?',
                 })));
             }
+
             if (empRes.data) {
                 setEmployees(empRes.data);
+                console.log('[fetchData] Employees found:', empRes.data.length);
 
-                // Trouver l'ID employé correspondant à l'utilisateur courant (par profile_id ou par nom en dernier recours)
-                const { data: myEmp } = await supabase
-                    .from('employes')
-                    .select('id')
-                    .eq('salon_id', profile.salon_id)
-                    .eq('profile_id', user.id)
-                    .maybeSingle();
+                // 1. Try matching by profile_id
+                let foundEmp = empRes.data.find(e => e.profile_id === user.id);
 
-                if (myEmp) {
-                    setCurrentEmployeId(myEmp.id);
+                if (foundEmp) {
+                    console.log('[fetchData] Employee matched by profile_id:', foundEmp.id);
+                    setCurrentEmployeId(foundEmp.id);
                 } else if (profile.role === 'manager' || profile.role === 'coiffeur') {
-                    // Fallback par nom si profile_id n'est pas encore setté (migration rétroactive)
-                    const myName = `${profile.prenom || ''} ${profile.nom || ''}`.trim();
-                    const match = empRes.data.find((e: any) => e.nom_employe.toLowerCase() === myName.toLowerCase());
-                    if (match) {
-                        setCurrentEmployeId(match.id);
-                        // Tentative de liaison automatique pour les prochaines fois
-                        supabase.from('employes').update({ profile_id: user.id }).eq('id', match.id).then();
+                    // 2. Fallback matching by name
+                    const myFullName = `${profile.prenom || ''} ${profile.nom || ''}`.trim();
+                    const normalizedMyName = normalizeName(myFullName);
+
+                    foundEmp = empRes.data.find(e => normalizeName(e.nom_employe || '') === normalizedMyName);
+
+                    if (foundEmp) {
+                        console.log('[fetchData] Employee matched by NAME fallback:', foundEmp.id);
+                        setCurrentEmployeId(foundEmp.id);
+                        // Automate the link for future sessions
+                        console.log('[fetchData] Linking profile_id to employee record...');
+                        supabase.from('employes').update({ profile_id: user.id }).eq('id', foundEmp.id).then(r => {
+                            if (r.error) console.error('[fetchData] Link update failed:', r.error);
+                            else console.log('[fetchData] Link update success');
+                        });
+                    } else {
+                        console.warn('[fetchData] No employee match found for:', myFullName);
                     }
                 }
             }
-        } catch (e) { console.error(e); } finally { setLoading(false); }
+        } catch (e) {
+            console.error('[fetchData] Unexpected error:', e);
+        } finally {
+            setLoading(false);
+        }
     }
 
     const getTodayStr = () => {
@@ -206,10 +240,16 @@ export default function SalonAbsencesScreen({ navigation }: any) {
 
     // ── Open Add Modal ─────────────────────────────────────────────────────────
     function openAdd() {
+        console.log('[openAdd] Initializing form with currentEmployeId:', currentEmployeId);
         setForm({
-            employe_id: currentEmployeId || (role === 'coiffeur' ? profileId || '' : ''),
-            type: 'Congé annuel', date_debut: '', date_fin: '',
-            is_half_day: false, heure_debut: '', heure_fin: '', commentaire: '',
+            employe_id: currentEmployeId || '',
+            type: 'Congé annuel',
+            date_debut: '',
+            date_fin: '',
+            is_half_day: false,
+            heure_debut: '',
+            heure_fin: '',
+            commentaire: '',
         });
         setShowAddModal(true);
     }
