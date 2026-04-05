@@ -181,12 +181,14 @@ export default function SalonAbsencesScreen({ navigation }: any) {
 
             if (salonRes.data?.horaires_ouverture) setOpeningHours(salonRes.data.horaires_ouverture);
 
+            let initialAbsences: Absence[] = [];
             if (absRes.data) {
-                setAbsences(absRes.data.map((a: any) => ({
+                initialAbsences = absRes.data.map((a: any) => ({
                     ...a, nom_employe: a.employes?.nom_employe || '?',
-                })));
+                }));
             }
 
+            let resolvedEmpId = null;
             if (empRes.data) {
                 setEmployees(empRes.data);
 
@@ -194,6 +196,7 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                 let foundEmp = empRes.data.find(e => e.user_id === user.id);
 
                 if (foundEmp) {
+                    resolvedEmpId = foundEmp.id;
                     setCurrentEmployeId(foundEmp.id);
                 } else if (profile.role === 'manager' || profile.role === 'coiffeur') {
                     // 2. Fallback matching by name
@@ -203,12 +206,21 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                     foundEmp = empRes.data.find(e => normalizeName(e.nom_employe || '') === normalizedMyName);
 
                     if (foundEmp) {
+                        resolvedEmpId = foundEmp.id;
                         setCurrentEmployeId(foundEmp.id);
                         // Automate the link for future sessions
                         supabase.from('employes').update({ user_id: user.id }).eq('id', foundEmp.id).then();
                     }
                 }
             }
+
+            // Filtrage : Le coiffeur ne voit que ses propres absences
+            if (profile.role === 'coiffeur' && resolvedEmpId) {
+                setAbsences(initialAbsences.filter(a => a.employe_id === resolvedEmpId));
+            } else {
+                setAbsences(initialAbsences);
+            }
+
         } catch (e) {
             console.error(e);
         } finally {
@@ -302,7 +314,7 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                 heure_debut: form.is_half_day ? form.heure_debut || null : null,
                 heure_fin: form.is_half_day ? form.heure_fin || null : null,
                 commentaire: form.commentaire,
-                statut: 'pending',
+                statut: (role === 'manager' || role === 'super_admin') ? 'approved' : 'pending',
             });
             if (error) throw error;
             setShowAddModal(false);

@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking, Alert } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     User, Settings, Bell, HelpCircle, LogOut,
-    ChevronRight, Shield, LayoutDashboard, ExternalLink,
+    ChevronRight, Shield, LayoutDashboard, CalendarOff,
+    Store, Users
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
@@ -98,6 +99,30 @@ export default function ProfileScreen({ navigation }: any) {
             bg: '#F5F3FF',
             onPress: () => navigation.navigate('SalonDashboard'),
             roles: ['super_admin'],
+        },
+        {
+            icon: CalendarOff,
+            label: role === 'coiffeur' ? 'Mes Absences' : 'Gestion des Absences',
+            color: '#D97706',
+            bg: '#FEF3C7',
+            onPress: () => navigation.navigate('SalonAbsences'),
+            roles: ['super_admin', 'manager', 'coiffeur'],
+        },
+        {
+            icon: Users,
+            label: "Gestion de l'Équipe",
+            color: '#10B981',
+            bg: '#D1FAE5',
+            onPress: () => navigation.navigate('SalonSettings'),
+            roles: ['super_admin', 'manager'],
+        },
+        {
+            icon: Store,
+            label: 'Paramètres du Salon',
+            color: '#2563EB',
+            bg: '#DBEAFE',
+            onPress: () => navigation.navigate('SalonConfig'),
+            roles: ['super_admin', 'manager'],
         },
         {
             icon: Bell,

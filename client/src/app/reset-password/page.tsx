@@ -99,16 +99,16 @@ function ResetPasswordContent() {
                         <h1 className="text-2xl font-black text-slate-800">Lien expiré ou invalide</h1>
                         <p className="text-slate-500 text-sm leading-relaxed">
                             Ce lien d'activation n'est plus valide. Demandez un nouveau lien à votre manager
-                            ou contactez le support VibeRdv.
+                            ou contactez le support RESERVY.
                         </p>
                     </div>
                     <a
-                        href={`mailto:hamdi@viberdv.tn?subject=Nouveau lien d'activation`}
+                        href={`mailto:hamdi@reservy.tn?subject=Nouveau lien d'activation`}
                         className="block w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm uppercase italic tracking-tighter"
                     >
                         Contacter le support
                     </a>
-                    <p className="text-slate-400 text-xs">hamdi@viberdv.tn</p>
+                    <p className="text-slate-400 text-xs">hamdi@reservy.tn</p>
                 </div>
             </div>
         )
@@ -140,7 +140,7 @@ function ResetPasswordContent() {
                 </div>
                 <div>
                     <h1 className="text-3xl font-black italic uppercase tracking-tighter text-slate-800">
-                        Bienvenue sur VibeRdv
+                        Bienvenue sur RESERVY
                     </h1>
                     <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">
                         Définissez votre mot de passe pour activer votre compte

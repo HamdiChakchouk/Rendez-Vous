@@ -179,7 +179,7 @@ export default function OnboardingPage() {
                         <Scissors size={20} />
                     </div>
                     <div>
-                        <p className="text-xs font-black uppercase tracking-widest text-slate-400">VibeRdv</p>
+                        <p className="text-xs font-black uppercase tracking-widest text-slate-400">RESERVY</p>
                         <p className="font-black text-slate-800 text-sm">Configuration du salon</p>
                     </div>
                 </div>
@@ -407,7 +407,7 @@ export default function OnboardingPage() {
                         <div className="space-y-3">
                             <h2 className="text-3xl font-black text-slate-800 italic">Votre salon est prêt !</h2>
                             <p className="text-slate-500 leading-relaxed max-w-sm">
-                                Bienvenue sur <strong>VibeRdv</strong> ! Votre espace est configuré.
+                                Bienvenue sur <strong>RESERVY</strong> ! Votre espace est configuré.
                                 Commencez à gérer vos rendez-vous dès maintenant.
                             </p>
                         </div>

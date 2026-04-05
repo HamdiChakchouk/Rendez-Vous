@@ -168,7 +168,7 @@ export default function LoginPage() {
             </div>
 
             <p className="mt-8 text-slate-400 text-[10px] font-medium tracking-wide uppercase">
-                Support : hamdi@viberdv.tn
+                Support : hamdi@reservy.tn
             </p>
         </div>
     )

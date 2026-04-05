@@ -48,7 +48,7 @@ export async function POST(req: Request) {
         // Envoyer le code brut par SMS (jamais le hash)
         const success = await NotificationService.sendSMS(
             phone,
-            `Votre code de validation Rendez-Vous.tn: ${otp}`
+            `Votre code de validation RESERVY: ${otp}`
         );
 
         if (success) {

@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     Calendar, Plus, CheckCircle, XCircle, ArrowLeft,
-    Settings, Scissors, Clock, User, Phone, ChevronRight,
+    Settings, CalendarOff, Clock, User, Phone, ChevronRight,
     TrendingUp, RefreshCw,
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
@@ -189,7 +189,7 @@ export default function SalonDashboardScreen({ navigation }: any) {
                     </TouchableOpacity>
                 )}
                 <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonAbsences')}>
-                    <Scissors size={20} color="#374151" />
+                    <CalendarOff size={20} color="#374151" />
                 </TouchableOpacity>
                 {(userRole === 'manager' || userRole === 'super_admin') && (
                     <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonSettings')}>

@@ -489,13 +489,13 @@ export default function AdminPage() {
     return (
         <div className="min-h-screen bg-slate-900 text-white flex flex-col md:flex-row relative">
             <header className="md:hidden bg-slate-950 p-4 flex justify-between items-center border-b border-slate-800 sticky top-0 z-50">
-                <h1 className="text-lg font-black tracking-tighter italic">VibeRdv <span className="text-primary text-[10px] not-italic">ADMIN</span></h1>
+                <h1 className="text-lg font-black tracking-tighter italic">RESERVY <span className="text-primary text-[10px] not-italic">ADMIN</span></h1>
                 <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 text-slate-400"><Menu size={24} /></button>
             </header>
 
             <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-950 p-6 flex flex-col border-r border-slate-800 transition-transform duration-300 transform md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <h1 className="hidden md:block text-xl font-black tracking-tighter text-white mb-12 italic">
-                    VibeRdv <span className="text-primary text-xs not-italic">ADMIN</span>
+                    RESERVY <span className="text-primary text-xs not-italic">ADMIN</span>
                 </h1>
                 <nav className="space-y-2 flex-1">
                     {navItems.map(({ tab, icon: Icon, label, badge }: any) => (
