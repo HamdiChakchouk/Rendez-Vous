@@ -1,34 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ScrollView,
-    TextInput, ActivityIndicator, Alert,
+    Modal, TextInput, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Save, Globe, Instagram, Facebook, MapPin, Info, CheckCircle, XCircle } from 'lucide-react-native';
+import { ArrowLeft, Plus, Trash2, Save, Users, X, UserPlus, Mail } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
-const QUARTIERS = [
-    'Ariana', 'La Marsa', 'Gammarth', 'Sidi Bou Said', 'Carthage',
-    'El Menzah', 'Ennasr', 'Le Bardo', 'Centre Ville', 'Les Berges du Lac',
-    'La Soukra', 'Manar', "L'Aouina", 'Ain Zaghouan',
-];
+// Production API or local network URL. Currently using prod for simplicity, or local if needed.
+// Modify if needed to point to your real backend URL.
+const API_URL = 'https://rendez-vous-omega.vercel.app/api/manager/create-coiffeur'; 
 
 export default function SalonSettingsScreen({ navigation }: any) {
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
     const [salonId, setSalonId] = useState<string | null>(null);
-    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-    const [form, setForm] = useState({
-        nom_salon: '',
-        adresse: '',
-        telephone: '',
-        description: '',
-        logo_url: '',
-        social_networks: { instagram: '', facebook: '', tiktok: '' },
-        service_area: [] as string[],
-        other_area: '',
-    });
+    const [employees, setEmployees] = useState<any[]>([]);
+    
+    const [showEmpModal, setShowEmpModal] = useState(false);
+    const [empType, setEmpType] = useState<'simple' | 'access'>('simple');
+    const [newEmpForm, setNewEmpForm] = useState({ nom: '', prenom: '', email: '', telephone: '' });
+    const [savingEmp, setSavingEmp] = useState(false);
 
     useEffect(() => { fetchData(); }, []);
 
@@ -39,228 +30,227 @@ export default function SalonSettingsScreen({ navigation }: any) {
             if (!user) return;
             const { data: profile } = await supabase.from('profiles').select('salon_id').eq('id', user.id).maybeSingle();
             if (!profile?.salon_id) { setLoading(false); return; }
-            setSalonId(profile.salon_id);
-
-            const { data: salon } = await supabase.from('salons').select('*').eq('id', profile.salon_id).single();
-            if (salon) {
-                setForm({
-                    nom_salon: salon.nom_salon || '',
-                    adresse: salon.adresse || '',
-                    telephone: salon.telephone || '',
-                    description: salon.description || '',
-                    logo_url: salon.logo_url || '',
-                    social_networks: {
-                        instagram: salon.social_networks?.instagram || '',
-                        facebook: salon.social_networks?.facebook || '',
-                        tiktok: salon.social_networks?.tiktok || '',
-                    },
-                    service_area: salon.service_area || [],
-                    other_area: '',
-                });
-            }
-        } catch (e) { console.error(e); } finally { setLoading(false); }
+            const sid = profile.salon_id;
+            setSalonId(sid);
+            
+            const { data: empsRes } = await supabase.from('employes').select('*').eq('salon_id', sid).order('nom_employe');
+            if (empsRes) setEmployees(empsRes);
+        } catch (e) {
+             console.error(e); 
+        } finally { 
+            setLoading(false); 
+        }
     }
 
-    async function handleSave() {
-        if (!salonId) return;
-        setSaving(true);
-        setMessage(null);
+    async function addEmployee() {
+        if (!salonId || !newEmpForm.nom.trim() || !newEmpForm.prenom.trim()) { 
+            Alert.alert('Erreur', 'Veuillez saisir le prénom et le nom'); 
+            return; 
+        }
+        
+        if (empType === 'access' && (!newEmpForm.email.trim() || !newEmpForm.email.includes('@'))) {
+            Alert.alert('Erreur', 'Email valide obligatoire pour donner l\'accès'); 
+            return;
+        }
+
+        setSavingEmp(true);
         try {
-            const serviceArea = form.other_area.trim()
-                ? [...form.service_area, form.other_area.trim()]
-                : form.service_area;
+            if (empType === 'simple') {
+                // Simple DB insertion
+                const nom_complet = `${newEmpForm.prenom.trim()} ${newEmpForm.nom.trim()}`;
+                const { error } = await supabase.from('employes').insert({ 
+                    salon_id: salonId, 
+                    nom_employe: nom_complet 
+                });
+                if (error) throw error;
+                Alert.alert('Succès', 'Collaborateur ajouté au planning !');
+            } else {
+                // Call NextJS API for proper creation and invite
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session?.access_token) throw new Error('Token manquant');
+                
+                // Si on est en dev local on pourait utiliser le réseau local. On garde l'URL de prod pour l'instant.
+                // Replace strictly with your active backend domain if needed.
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
+                    body: JSON.stringify({
+                        nom: newEmpForm.nom.trim(),
+                        prenom: newEmpForm.prenom.trim(),
+                        email: newEmpForm.email.trim(),
+                        telephone: newEmpForm.telephone.trim()
+                    })
+                });
 
-            const { error } = await supabase.from('salons').update({
-                nom_salon: form.nom_salon,
-                adresse: form.adresse,
-                telephone: form.telephone,
-                description: form.description,
-                logo_url: form.logo_url,
-                social_networks: form.social_networks,
-                service_area: serviceArea,
-                updated_at: new Date().toISOString(),
-            }).eq('id', salonId);
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || 'Erreur API inconnue');
+                }
+                Alert.alert('Succès', data.message || 'Invitation envoyée avec succès !');
+            }
 
-            if (error) throw error;
-            setMessage({ type: 'success', text: 'Paramètres enregistrés avec succès !' });
-            setTimeout(() => setMessage(null), 3000);
-        } catch (e: any) {
-            setMessage({ type: 'error', text: 'Erreur : ' + e.message });
-        } finally { setSaving(false); }
+            setShowEmpModal(false);
+            setNewEmpForm({ nom: '', prenom: '', email: '', telephone: '' });
+            fetchData();
+        } catch (error: any) {
+            Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+        } finally {
+            setSavingEmp(false);
+        }
     }
 
-    function toggleQuartier(area: string) {
-        setForm(p => ({
-            ...p,
-            service_area: p.service_area.includes(area)
-                ? p.service_area.filter(a => a !== area)
-                : [...p.service_area, area],
-        }));
+    async function deleteEmployee(id: string) {
+        Alert.alert('Retirer', 'Êtes-vous sûr de vouloir retirer ce collaborateur ?', [
+            { text: 'Annuler', style: 'cancel' },
+            {
+                text: 'Supprimer', style: 'destructive', onPress: async () => {
+                    await supabase.from('employes').delete().eq('id', id); 
+                    fetchData();
+                }
+            },
+        ]);
     }
 
-    if (loading) return (
-        <SafeAreaView style={s.container}>
-            <ActivityIndicator size="large" color="#111" style={{ flex: 1 }} />
-        </SafeAreaView>
-    );
+    if (loading) return <SafeAreaView style={s.container}><ActivityIndicator size="large" color="#111" style={{ flex: 1 }} /></SafeAreaView>;
 
     return (
         <SafeAreaView style={s.container}>
-            {/* Header */}
             <View style={s.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <ArrowLeft size={22} color="#111" />
-                </TouchableOpacity>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={s.title}>Profil du Salon</Text>
-                    <Text style={s.subtitle}>Édition Profil Public</Text>
-                </View>
-                <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.5 }]} onPress={handleSave} disabled={saving}>
-                    {saving ? <ActivityIndicator color="#fff" size="small" /> : (
-                        <>
-                            <Save size={14} color="#fff" />
-                            <Text style={s.saveBtnText}>Enregistrer</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
+                <TouchableOpacity onPress={() => navigation.goBack()}><ArrowLeft size={22} color="#111" /></TouchableOpacity>
+                <Text style={s.title}>Gestion de l'Équipe</Text>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-
-                {/* Success/Error message */}
-                {message && (
-                    <View style={[s.messageBanner, message.type === 'success' ? s.successBanner : s.errorBanner]}>
-                        {message.type === 'success'
-                            ? <CheckCircle size={18} color="#059669" />
-                            : <XCircle size={18} color="#DC2626" />}
-                        <Text style={[s.messageText, { color: message.type === 'success' ? '#059669' : '#DC2626' }]}>
-                            {message.text}
-                        </Text>
-                    </View>
-                )}
-
-                {/* ── Infos Générales ──────────────────────── */}
-                <View style={s.section}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 20, paddingBottom: 60 }}>
+                {/* Employés */}
+                <View style={[s.section, { paddingBottom: 24 }]}>
                     <View style={s.secHead}>
-                        <Info size={15} color="#1152d4" />
-                        <Text style={s.secTitle}>Informations Générales</Text>
+                        <Users size={16} color="#10B981" />
+                        <Text style={s.secTitle}>Votre Personnel</Text>
+                        <TouchableOpacity style={s.addCircle} onPress={() => setShowEmpModal(true)}>
+                            <Plus size={16} color="#10B981" />
+                        </TouchableOpacity>
                     </View>
-
-                    <Text style={s.label}>Nom du Salon *</Text>
-                    <TextInput style={s.input} placeholder="Ex: Élégance Carthage" value={form.nom_salon}
-                        onChangeText={v => setForm({ ...form, nom_salon: v })} maxLength={60} />
-
-                    <Text style={s.label}>Adresse Complète</Text>
-                    <TextInput style={[s.input, s.multiline]} placeholder="N°, Rue, Ville..." multiline numberOfLines={2}
-                        value={form.adresse} onChangeText={v => setForm({ ...form, adresse: v })} />
-
-                    <Text style={s.label}>Téléphone Principal</Text>
-                    <TextInput style={s.input} placeholder="+216 -- --- ---" keyboardType="phone-pad"
-                        value={form.telephone} onChangeText={v => setForm({ ...form, telephone: v })} />
-
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <Text style={s.label}>Description</Text>
-                        <Text style={s.charCount}>{form.description.length}/300</Text>
-                    </View>
-                    <TextInput style={[s.input, s.multiline, { height: 90 }]} placeholder="Décrivez votre salon..."
-                        multiline numberOfLines={4} maxLength={300}
-                        value={form.description} onChangeText={v => setForm({ ...form, description: v })} />
-                </View>
-
-                {/* ── Identité Visuelle ─────────────────────── */}
-                <View style={s.section}>
-                    <View style={s.secHead}>
-                        <Globe size={15} color="#1152d4" />
-                        <Text style={s.secTitle}>Logo & Identité Visuelle</Text>
-                    </View>
-                    <Text style={s.label}>URL du Logo</Text>
-                    <TextInput style={s.input} placeholder="https://..." value={form.logo_url}
-                        onChangeText={v => setForm({ ...form, logo_url: v })} keyboardType="url" autoCapitalize="none" />
-                    <Text style={s.hint}>💡 Hébergez votre logo sur Imgur, Cloudinary ou tout service d'image public</Text>
-                </View>
-
-                {/* ── Réseaux Sociaux ───────────────────────── */}
-                <View style={s.section}>
-                    <View style={s.secHead}>
-                        <Globe size={15} color="#1152d4" />
-                        <Text style={s.secTitle}>Réseaux Sociaux</Text>
-                    </View>
-
-                    <View style={s.socialRow}>
-                        <View style={[s.socialIcon, { backgroundColor: '#FCE7F3' }]}>
-                            <Instagram size={18} color="#E1306C" />
-                        </View>
-                        <TextInput style={s.socialInput} placeholder="Lien Instagram" value={form.social_networks.instagram}
-                            onChangeText={v => setForm({ ...form, social_networks: { ...form.social_networks, instagram: v } })}
-                            autoCapitalize="none" keyboardType="url" />
-                    </View>
-
-                    <View style={s.socialRow}>
-                        <View style={[s.socialIcon, { backgroundColor: '#EFF6FF' }]}>
-                            <Facebook size={18} color="#1877F2" />
-                        </View>
-                        <TextInput style={s.socialInput} placeholder="Lien Facebook" value={form.social_networks.facebook}
-                            onChangeText={v => setForm({ ...form, social_networks: { ...form.social_networks, facebook: v } })}
-                            autoCapitalize="none" keyboardType="url" />
-                    </View>
-
-                    <View style={s.socialRow}>
-                        <View style={[s.socialIcon, { backgroundColor: '#F3F4F6' }]}>
-                            <Text style={{ fontSize: 12, fontWeight: '900', color: '#111' }}>TT</Text>
-                        </View>
-                        <TextInput style={s.socialInput} placeholder="Lien TikTok" value={form.social_networks.tiktok}
-                            onChangeText={v => setForm({ ...form, social_networks: { ...form.social_networks, tiktok: v } })}
-                            autoCapitalize="none" keyboardType="url" />
-                    </View>
-                </View>
-
-                {/* ── Zones Desservies ──────────────────────── */}
-                <View style={s.section}>
-                    <View style={s.secHead}>
-                        <MapPin size={15} color="#1152d4" />
-                        <Text style={s.secTitle}>Zones Desservies</Text>
-                    </View>
-                    <View style={s.chipWrap}>
-                        {QUARTIERS.map(area => (
-                            <TouchableOpacity key={area} onPress={() => toggleQuartier(area)}
-                                style={[s.chip, form.service_area.includes(area) && s.chipOn]}>
-                                <Text style={[s.chipTxt, form.service_area.includes(area) && { color: '#fff' }]}>{area}</Text>
-                            </TouchableOpacity>
+                    <Text style={s.hint}>Gérez qui apparaît sur votre planning et qui a accès à l'application.</Text>
+                    
+                    {employees.length === 0 && <Text style={s.emptyTxt}>Aucun collaborateur pour le moment</Text>}
+                    <View style={s.empGrid}>
+                        {employees.map(emp => (
+                            <View key={emp.id} style={s.empCard}>
+                                <View style={[s.empIconWrap, emp.user_id && { backgroundColor: '#D1FAE5' }]}>
+                                    <Text style={[s.empInitial, emp.user_id && { color: '#059669' }]}>
+                                        {emp.nom_employe ? emp.nom_employe[0].toUpperCase() : '?'}
+                                    </Text>
+                                    {emp.user_id && (
+                                        <View style={s.accessBadge}>
+                                            <Mail size={8} color="#fff" />
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={s.empName}>{emp.nom_employe}</Text>
+                                <Text style={s.empSub}>{emp.user_id ? 'Appli activée' : 'Planning seul'}</Text>
+                                <TouchableOpacity style={s.empDel} onPress={() => deleteEmployee(emp.id)}>
+                                    <X size={11} color="#9CA3AF" />
+                                </TouchableOpacity>
+                            </View>
                         ))}
                     </View>
-                    <Text style={[s.label, { marginTop: 12 }]}>Autre quartier</Text>
-                    <TextInput style={s.input} placeholder="Saisir un autre quartier..."
-                        value={form.other_area} onChangeText={v => setForm({ ...form, other_area: v })} />
                 </View>
             </ScrollView>
+
+            {/* Modal Ajoutez un Employé */}
+            <Modal visible={showEmpModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowEmpModal(false)}>
+                <SafeAreaView style={s.modal}>
+                    <View style={s.modalHead}>
+                        <Text style={s.modalTitle}>Nouveau Collaborateur</Text>
+                        <TouchableOpacity onPress={() => setShowEmpModal(false)}><X size={22} color="#9CA3AF" /></TouchableOpacity>
+                    </View>
+                    
+                    <ScrollView style={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+                        
+                        <View style={s.tabs}>
+                            <TouchableOpacity onPress={() => setEmpType('simple')} style={[s.tab, empType === 'simple' && s.tabActive]}>
+                                <UserPlus size={16} color={empType === 'simple' ? "#111" : "#6B7280"} />
+                                <Text style={[s.tabTxt, empType === 'simple' && s.tabTxtActive]}>Collaborateur Simple</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setEmpType('access')} style={[s.tab, empType === 'access' && s.tabActive]}>
+                                <Mail size={16} color={empType === 'access' ? "#111" : "#6B7280"} />
+                                <Text style={[s.tabTxt, empType === 'access' && s.tabTxtActive]}>Avec Accès Appli</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={s.descTxt}>
+                            {empType === 'simple' 
+                                ? "Création locale. Le collaborateur s'affichera dans l'application ou l'agenda, mais ne pourra pas se connecter lui-même."
+                                : "Un compte sécurisé sera créé pour lui et une invitation sera envoyée par e-mail afin qu'il puisse se connecter à Reservy."}
+                        </Text>
+
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.fieldLabel}>Prénom *</Text>
+                                <TextInput style={s.input} placeholder="Ex: Amine" value={newEmpForm.prenom} onChangeText={v => setNewEmpForm({ ...newEmpForm, prenom: v })} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={s.fieldLabel}>Nom *</Text>
+                                <TextInput style={s.input} placeholder="Ex: Benz" value={newEmpForm.nom} onChangeText={v => setNewEmpForm({ ...newEmpForm, nom: v })} />
+                            </View>
+                        </View>
+
+                        {empType === 'access' && (
+                            <>
+                                <Text style={s.fieldLabel}>Adresse Email *</Text>
+                                <TextInput style={s.input} placeholder="aminebenz@email.com" keyboardType="email-address" autoCapitalize="none" 
+                                    value={newEmpForm.email} onChangeText={v => setNewEmpForm({ ...newEmpForm, email: v })} />
+                                    
+                                <Text style={s.fieldLabel}>Téléphone (Optionnel)</Text>
+                                <TextInput style={s.input} placeholder="+216 -- --- ---" keyboardType="phone-pad"
+                                    value={newEmpForm.telephone} onChangeText={v => setNewEmpForm({ ...newEmpForm, telephone: v })} />
+                            </>
+                        )}
+                        
+                        <TouchableOpacity style={[s.actionBtn, savingEmp && { opacity: 0.6 }]} onPress={addEmployee} disabled={savingEmp}>
+                            {savingEmp ? <ActivityIndicator color="#fff" /> : <Text style={s.actionBtnTxt}>Créer et Ajouter</Text>}
+                        </TouchableOpacity>
+                        
+                    </ScrollView>
+                </SafeAreaView>
+            </Modal>
         </SafeAreaView>
     );
 }
 
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F9FAFB' },
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-    title: { fontSize: 16, fontWeight: '900', color: '#111' },
-    subtitle: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 1 },
-    saveBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#111', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12 },
-    saveBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-    messageBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14 },
-    successBanner: { backgroundColor: '#D1FAE5' },
-    errorBanner: { backgroundColor: '#FEE2E2' },
-    messageText: { fontSize: 14, fontWeight: '700', flex: 1 },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    title: { fontSize: 18, fontWeight: '900', color: '#111', flex: 1 },
     section: { backgroundColor: '#fff', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#F3F4F6' },
-    secHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-    secTitle: { fontSize: 15, fontWeight: '800', color: '#111' },
-    label: { fontSize: 11, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-    charCount: { fontSize: 11, color: '#9CA3AF', fontWeight: '600' },
-    hint: { fontSize: 12, color: '#9CA3AF', marginTop: 6, marginBottom: 4 },
-    input: { backgroundColor: '#F3F4F6', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#111', fontWeight: '600', marginBottom: 14 },
-    multiline: { textAlignVertical: 'top', height: 70 },
-    socialRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F9FAFB', borderRadius: 12, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: '#F3F4F6' },
-    socialIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-    socialInput: { flex: 1, fontSize: 14, color: '#111', fontWeight: '600' },
-    chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: '#F3F4F6' },
-    chipOn: { backgroundColor: '#111' },
-    chipTxt: { fontSize: 13, fontWeight: '700', color: '#374151' },
+    secHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+    secTitle: { fontSize: 16, fontWeight: '900', color: '#111', flex: 1 },
+    hint: { fontSize: 12, color: '#6B7280', marginBottom: 16 },
+    addCircle: { width: 34, height: 34, borderRadius: 12, backgroundColor: '#D1FAE5', justifyContent: 'center', alignItems: 'center' },
+    emptyTxt: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', paddingVertical: 12 },
+    empGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    empCard: { width: '47%', backgroundColor: '#F9FAFB', borderRadius: 14, padding: 16, alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#F3F4F6' },
+    empIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+    empInitial: { fontSize: 20, fontWeight: '900', color: '#1D4ED8' },
+    accessBadge: { position: 'absolute', bottom: -2, right: -2, backgroundColor: '#10B981', width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
+    empName: { fontSize: 13, fontWeight: '800', color: '#111', textAlign: 'center' },
+    empSub: { fontSize: 10, fontWeight: '600', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 },
+    empDel: { position: 'absolute', top: 6, right: 6, padding: 6 },
+    
+    modal: { flex: 1, backgroundColor: '#fff' },
+    modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    modalTitle: { fontSize: 18, fontWeight: '900', color: '#111' },
+    tabs: { flexDirection: 'row', backgroundColor: '#F3F4F6', borderRadius: 12, padding: 4, marginBottom: 12 },
+    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10 },
+    tabActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 },
+    tabTxt: { fontSize: 12, fontWeight: '700', color: '#6B7280' },
+    tabTxtActive: { color: '#111' },
+    descTxt: { fontSize: 12, color: '#6B7280', fontStyle: 'italic', marginBottom: 20, lineHeight: 18 },
+    fieldLabel: { fontSize: 11, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+    input: { backgroundColor: '#F3F4F6', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#111', fontWeight: '600', marginBottom: 16 },
+    actionBtn: { backgroundColor: '#111', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 12, marginBottom: 32 },
+    actionBtnTxt: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

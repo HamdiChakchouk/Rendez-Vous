@@ -6,19 +6,31 @@ import { ok, err } from '@/lib/api-response'
 
 export async function POST(req: Request) {
     try {
-        const cookieStore = await cookies()
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    getAll() { return cookieStore.getAll() },
-                    setAll() { },
+        let callerUser = null
+        const authHeader = req.headers.get('authorization')
+        
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7)
+            const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+            if (error) console.error('Token error:', error)
+            callerUser = user
+        } else {
+            const cookieStore = await cookies()
+            const supabase = createServerClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                {
+                    cookies: {
+                        getAll() { return cookieStore.getAll() },
+                        setAll() { },
+                    }
                 }
-            }
-        )
-        const { data: { user: caller } } = await supabase.auth.getUser()
-        if (!caller || caller.app_metadata?.role !== 'manager') {
+            )
+            const { data: { user } } = await supabase.auth.getUser()
+            callerUser = user
+        }
+
+        if (!callerUser || callerUser.app_metadata?.role !== 'manager') {
             return err('Accès refusé', 403)
         }
 
@@ -31,7 +43,7 @@ export async function POST(req: Request) {
         const { data: managerProfile } = await supabaseAdmin
             .from('profiles')
             .select('salon_id')
-            .eq('id', caller.id)
+            .eq('id', callerUser.id)
             .single()
 
         if (!managerProfile?.salon_id) {
