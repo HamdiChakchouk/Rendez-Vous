@@ -13,7 +13,7 @@ export async function POST(req: Request) {
             const token = authHeader.substring(7)
             const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
             if (error) {
-                console.error('[create-coiffeur] Token error:', error)
+                console.error('[delete-coiffeur] Token error:', error)
             } else {
                 callerUser = user
             }
@@ -51,66 +51,50 @@ export async function POST(req: Request) {
             return err('Salon du manager introuvable', 400)
         }
 
-        const { prenom, nom, telephone, email } = await req.json()
+        const { employe_id } = await req.json()
 
-        if (!nom || !prenom) {
-            return err('Nom et prénom obligatoires', 400)
+        if (!employe_id) {
+            return err('Identifiant de l employé (employe_id) obligatoire', 400)
         }
 
-        const salon_id = managerProfile.salon_id
+        // 1. Vérifier que l'employé appartient bien au salon du manager
+        const { data: employe } = await supabaseAdmin
+            .from('employes')
+            .select('*')
+            .eq('id', employe_id)
+            .eq('salon_id', managerProfile.salon_id)
+            .single()
 
-        if (email) {
-            const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-                data: { nom, prenom, salon_id },
-                redirectTo: `${process.env.APP_URL}/reset-password`,
-            })
+        if (!employe) {
+            return err('L employé n existe pas ou n appartient pas à votre salon', 404)
+        }
 
-            if (inviteError) {
-                return err(`Erreur invitation: ${inviteError.message}`, 500)
+        // 2. S'il a un user_id (collaborateur avec accès), on le supprime de la base d'authentification complète
+        if (employe.user_id) {
+            // Delete user entirely from Auth. This implicitly cascades and cleans up `profiles`.
+            const { error: deleteUserError } = await supabaseAdmin.auth.admin.deleteUser(employe.user_id)
+            if (deleteUserError) {
+                console.error('[delete-coiffeur] Error deleting auth user:', deleteUserError)
+                return err(`Erreur de désactivation du compte utilisateur: ${deleteUserError.message}`, 500)
             }
-
-            const newUserId = inviteData.user.id
-
-            await supabaseAdmin.auth.admin.updateUserById(newUserId, {
-                app_metadata: { role: 'coiffeur' },
-            })
-
-            await supabaseAdmin.from('profiles').upsert({
-                id: newUserId,
-                role: 'coiffeur',
-                salon_id,
-                nom,
-                prenom,
-                telephone: telephone || null,
-                onboarding_completed: true,
-            })
-
-            await supabaseAdmin.from('employes').insert({
-                salon_id,
-                nom_employe: `${prenom} ${nom}`,
-                user_id: newUserId,
-            })
-
-            return ok({
-                message: `Coiffeur ajouté et email d'activation envoyé à ${email} !`,
-            })
         }
 
-        const { error: employeError } = await supabaseAdmin.from('employes').insert({
-            salon_id,
-            nom_employe: `${prenom} ${nom}`,
-        })
+        // 3. Qu'il soit "Simple" ou "Avec accès", on supprime sa présence du planning
+        const { error: deleteEmpError } = await supabaseAdmin
+            .from('employes')
+            .delete()
+            .eq('id', employe_id)
 
-        if (employeError) {
-            return err(`Erreur création employé: ${employeError.message}`, 500)
+        if (deleteEmpError) {
+             return err(`Erreur de suppression du planning: ${deleteEmpError.message}`, 500)
         }
 
         return ok({
-            message: 'Coiffeur ajouté à l\'équipe !',
+            message: 'Collaborateur retiré de l équipe et accès révoqué avec succès.',
         })
 
     } catch (error: any) {
-        console.error('[create-coiffeur] Unexpected error:', error)
+        console.error('[delete-coiffeur] Unexpected error:', error)
         return err(error.message || 'Erreur serveur')
     }
 }

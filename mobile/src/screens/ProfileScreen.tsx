@@ -90,14 +90,14 @@ export default function ProfileScreen({ navigation }: any) {
             color: '#1152d4',
             bg: '#EEF2FF',
             onPress: () => navigation.navigate('SalonDashboard'),
-            roles: ['super_admin', 'manager', 'coiffeur'],
+            roles: ['manager', 'coiffeur'],
         },
         {
             icon: Shield,
             label: 'Administration',
             color: '#7C3AED',
             bg: '#F5F3FF',
-            onPress: () => navigation.navigate('SalonDashboard'),
+            onPress: () => navigation.navigate('AdminDashboard'),
             roles: ['super_admin'],
         },
         {
@@ -106,7 +106,7 @@ export default function ProfileScreen({ navigation }: any) {
             color: '#D97706',
             bg: '#FEF3C7',
             onPress: () => navigation.navigate('SalonAbsences'),
-            roles: ['super_admin', 'manager', 'coiffeur'],
+            roles: ['manager', 'coiffeur'],
         },
         {
             icon: Users,
@@ -114,7 +114,7 @@ export default function ProfileScreen({ navigation }: any) {
             color: '#10B981',
             bg: '#D1FAE5',
             onPress: () => navigation.navigate('SalonSettings'),
-            roles: ['super_admin', 'manager'],
+            roles: ['manager'],
         },
         {
             icon: Store,
@@ -122,7 +122,7 @@ export default function ProfileScreen({ navigation }: any) {
             color: '#2563EB',
             bg: '#DBEAFE',
             onPress: () => navigation.navigate('SalonConfig'),
-            roles: ['super_admin', 'manager'],
+            roles: ['manager'],
         },
         {
             icon: Bell,

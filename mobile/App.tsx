@@ -19,6 +19,7 @@ import SalonAbsencesScreen from './src/screens/SalonAbsencesScreen';
 import SalonSettingsScreen from './src/screens/SalonSettingsScreen';
 import ProLandingScreen from './src/screens/ProLandingScreen';
 import SubscriptionRequestScreen from './src/screens/SubscriptionRequestScreen';
+import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -47,6 +48,7 @@ export default function App() {
           <Stack.Screen name="SalonConfig" component={SalonConfigScreen} options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="SalonAbsences" component={SalonAbsencesScreen} options={{ animation: 'slide_from_right' }} />
           <Stack.Screen name="SalonSettings" component={SalonSettingsScreen} options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} options={{ animation: 'slide_from_bottom' }} />
 
           {/* Pro Onboarding */}
           <Stack.Screen name="ProLanding" component={ProLandingScreen} options={{ animation: 'fade_from_bottom' }} />

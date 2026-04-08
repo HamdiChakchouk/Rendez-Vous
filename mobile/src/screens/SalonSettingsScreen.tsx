@@ -7,9 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Plus, Trash2, Save, Users, X, UserPlus, Mail } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
-// Production API or local network URL. Currently using prod for simplicity, or local if needed.
-// Modify if needed to point to your real backend URL.
-const API_URL = 'https://rendez-vous-omega.vercel.app/api/manager/create-coiffeur'; 
+// Use the env variable for the API URL
+const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/manager/create-coiffeur`; 
 
 export default function SalonSettingsScreen({ navigation }: any) {
     const [loading, setLoading] = useState(true);
@@ -103,12 +102,36 @@ export default function SalonSettingsScreen({ navigation }: any) {
     }
 
     async function deleteEmployee(id: string) {
-        Alert.alert('Retirer', 'Êtes-vous sûr de vouloir retirer ce collaborateur ?', [
+        Alert.alert('Retirer', 'Êtes-vous sûr de vouloir retirer ce collaborateur ? S\'il a accès à l\'application, son compte sera définitivement désactivé.', [
             { text: 'Annuler', style: 'cancel' },
             {
                 text: 'Supprimer', style: 'destructive', onPress: async () => {
-                    await supabase.from('employes').delete().eq('id', id); 
-                    fetchData();
+                    setLoading(true);
+                    try {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (!session?.access_token) throw new Error('Token manquant');
+                        
+                        const delUrl = `${process.env.EXPO_PUBLIC_API_URL}/api/manager/delete-coiffeur`;
+                        const res = await fetch(delUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${session.access_token}`
+                            },
+                            body: JSON.stringify({ employe_id: id })
+                        });
+                        
+                        const data = await res.json();
+                        if (!res.ok) {
+                            throw new Error(data.error || 'Erreur lors de la suppression');
+                        }
+                        
+                        Alert.alert('Succès', data.message || 'Collaborateur retiré avec succès');
+                    } catch (error: any) {
+                        Alert.alert('Erreur', error.message || 'Une erreur est survenue');
+                    } finally {
+                        fetchData();
+                    }
                 }
             },
         ]);
