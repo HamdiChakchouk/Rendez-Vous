@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
+    "scheme": "reservy",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -19,10 +19,28 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.hamdi.reservy"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ffffff"
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ebafe4f4-e762-4f37-8c05-f1e4365a0a17"
+      }
+    },
+    "owner": "hamdi005"
   }
 }

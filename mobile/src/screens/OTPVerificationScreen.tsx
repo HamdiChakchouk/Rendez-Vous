@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, ShieldCheck } from 'lucide-react-native';
 import { verifyOTP } from '../lib/otpService';
+import { supabaseStorage } from '../lib/storage';
 
 export default function OTPVerificationScreen({ navigation, route }: any) {
     const { phone, bookingData, serviceDetails } = route.params;
@@ -23,6 +24,8 @@ export default function OTPVerificationScreen({ navigation, route }: any) {
         setIsLoading(false);
 
         if (result.success) {
+            // Sauvegarder le numéro comme vérifié pour les prochaines réservations
+            await supabaseStorage.setItem('verified_phone', phone);
             navigation.replace('Confirmation', { phone, bookingData, serviceDetails });
         } else {
             setError(result.message);

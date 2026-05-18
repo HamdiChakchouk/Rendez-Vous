@@ -8,7 +8,7 @@
 
 import { supabase } from './supabase';
 
-// ─── Config Twilio (depuis .env) ─────────────────────────────
+// ─── Config Twilio (depuis .env) ───
 const TWILIO_ACCOUNT_SID = process.env.EXPO_PUBLIC_TWILIO_ACCOUNT_SID || '';
 const TWILIO_AUTH_TOKEN = process.env.EXPO_PUBLIC_TWILIO_AUTH_TOKEN || '';
 const TWILIO_PHONE = process.env.EXPO_PUBLIC_TWILIO_PHONE || '';
@@ -56,42 +56,45 @@ async function sha256(message: string): Promise<string> {
     return sha256Sync(message);
 }
 
-// ─── SMS via Twilio REST API ──────────────────────────────────
-async function sendSMS(to: string, message: string): Promise<boolean> {
-    // Sans config Twilio → simulation (logs uniquement)
+// ─── Stratégie de Notification (Push/SMS) ───────────────────────
+async function sendHybridNotification(to: string, message: string): Promise<boolean> {
+    // Sans config Twilio -> simulation (logs uniquement)
     if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
-        console.log(`[SMS Simulation] To: ${to}\nMessage: ${message}`);
+        console.log(`[Simulation Twilio SMS] To: ${to}\nMessage: ${message}`);
         return true;
     }
 
+    // 2. Fallback SMS Standard (Twilio API)
     try {
         const credentials = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
-        const body = new URLSearchParams({
+        const urlSMS = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+        
+        const bodySMS = new URLSearchParams({
             From: TWILIO_PHONE,
             To: to,
             Body: message,
         });
 
-        const res = await fetch(
-            `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
-            {
-                method: 'POST',
-                headers: {
-                    Authorization: `Basic ${credentials}`,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: body.toString(),
-            }
-        );
+        const resSMS = await fetch(urlSMS, {
+            method: 'POST',
+            headers: {
+                Authorization: `Basic ${credentials}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: bodySMS.toString()
+        });
+        
+        const dataSMS = await resSMS.json();
 
-        const data = await res.json();
-        if (!res.ok) {
-            console.error('[Twilio Error]', data);
+        if (resSMS.ok) {
+            console.log(`[Twilio SMS] Envoyé avec succès à ${to}`);
+            return true;
+        } else {
+            console.error('[Twilio SMS Error]', dataSMS);
             return false;
         }
-        return true;
     } catch (err) {
-        console.error('[SMS Error]', err);
+        console.error('[SMS Network Error]', err);
         return false;
     }
 }
@@ -145,8 +148,8 @@ export async function sendOTP(phone: string): Promise<OTPResult> {
 
         if (insertError) throw insertError;
 
-        // Envoyer le code brut par SMS (jamais le hash)
-        const smsSent = await sendSMS(
+        // Envoyer le code via la stratégie hybride (WhatsApp puis SMS)
+        const smsSent = await sendHybridNotification(
             phone,
             `Votre code de validation Reservy: ${otp}`
         );
@@ -169,7 +172,7 @@ export async function sendOTP(phone: string): Promise<OTPResult> {
     }
 }
 
-/** Vérifie le code OTP, crée le rendez-vous si valid, marque OTP comme vérifié */
+/** Vérifie le code OTP, crée le rendez-vous si valide, marque OTP comme vérifié */
 export async function verifyOTP(
     phone: string,
     code: string,
@@ -177,7 +180,7 @@ export async function verifyOTP(
 ): Promise<OTPResult> {
     try {
         // 1. Hash le code reçu et chercher en DB
-        const codeHash = await sha256(code);
+        const codeHash = await sha256Sync(code);
 
         const { data: otpRecord, error: otpError } = await supabase
             .from('otp_custom')
@@ -194,7 +197,47 @@ export async function verifyOTP(
             return { success: false, message: 'Code invalide ou expiré' };
         }
 
-        // 2. Validation du service
+        // 2. Créer la réservation
+        const bookingResult = await createDirectBooking(phone, bookingData);
+        
+        if (!bookingResult.success) {
+            return bookingResult;
+        }
+
+        // 3. Marquer OTP comme vérifié
+        await supabase
+            .from('otp_custom')
+            .update({ verified: true })
+            .eq('id', otpRecord.id);
+
+        console.log(`[OTP] RDV créé pour ${phone} suite à vérification OTP`);
+        return { success: true, message: 'Validé et RDV créé' };
+    } catch (err: any) {
+        console.error('[verifyOTP Error]', err);
+        return { success: false, message: err.message || 'Erreur inconnue' };
+    }
+}
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+/** 
+ * Crée une réservation directement sans vérifier l'OTP.
+ * Utile pour les clients dont le téléphone a déjà été vérifié.
+ */
+export async function createDirectBooking(
+    phone: string,
+    bookingData: BookingData
+): Promise<OTPResult> {
+    try {
+        // Récupérer l'utilisateur connecté via SSO (s'il y en a un)
+        const { data: authData } = await supabase.auth.getUser();
+        const user = authData?.user;
+        const ssoFullName = user?.user_metadata?.full_name || user?.user_metadata?.name || 'Client App';
+        
+        // Récupérer le token push local de l'appareil
+        const pushToken = await AsyncStorage.getItem('expo_push_token');
+
+        // 1. Validation du service
         const { data: service, error: serviceError } = await supabase
             .from('services')
             .select('id, salon_id, duree_minutes')
@@ -209,7 +252,7 @@ export async function verifyOTP(
             return { success: false, message: 'Données de réservation invalides' };
         }
 
-        // 3. Validation : pas dans le passé
+        // 2. Validation : pas dans le passé
         const rdvDateTime = new Date(`${new Date(bookingData.date).toISOString().split('T')[0]}T${bookingData.time}:00`);
         if (rdvDateTime < new Date()) {
             return { success: false, message: "La date et l'heure du rendez-vous sont dans le passé." };
@@ -219,7 +262,7 @@ export async function verifyOTP(
         const employeId = (bookingData.employeeId && bookingData.employeeId !== 'any')
             ? bookingData.employeeId : null;
 
-        // 4. Vérification conflits
+        // 3. Vérification conflits
         if (employeId) {
             const { data: conflict } = await supabase
                 .from('rendez_vous')
@@ -236,30 +279,79 @@ export async function verifyOTP(
             }
         }
 
-        // 5. Trouver ou créer le client
+        // 4. Trouver ou créer le client
         let clientId: string;
-        const { data: existingClient } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('telephone', phone)
-            .maybeSingle();
+        
+        // On cherche d'abord par ID Auth si l'utilisateur est connecté
+        let existingClient = null;
+        
+        if (user) {
+            const { data: clientById } = await supabase
+                .from('clients')
+                .select('id, telephone')
+                .eq('id', user.id)
+                .maybeSingle();
+            if (clientById) existingClient = clientById;
+        }
+
+        // Sinon on cherche par numéro de téléphone
+        if (!existingClient) {
+            const { data: clientByPhone } = await supabase
+                .from('clients')
+                .select('id')
+                .eq('telephone', phone)
+                .maybeSingle();
+            if (clientByPhone) existingClient = clientByPhone;
+        }
 
         if (existingClient) {
             clientId = existingClient.id;
+            // Mettre à jour le téléphone et/ou le push token si nécessaire
+            const updates: any = {};
+            if (existingClient.telephone !== phone) updates.telephone = phone;
+            if (pushToken) updates.expo_push_token = pushToken;
+            
+            if (Object.keys(updates).length > 0) {
+                await supabase.from('clients').update(updates).eq('id', clientId);
+            }
         } else {
+            // Créer le nouveau client
+            const clientPayload: any = { 
+                telephone: phone, 
+                nom_client: ssoFullName,
+                expo_push_token: pushToken || null
+            };
+            // Si on a un user SSO, on utilise son ID pour lier la table auth.users à la table clients
+            if (user) {
+                clientPayload.id = user.id;
+            }
+
             const { data: newClient, error: clientError } = await supabase
                 .from('clients')
-                .insert({ telephone: phone, nom_client: 'Client App' })
+                .insert(clientPayload)
                 .select('id')
                 .single();
 
             if (clientError || !newClient) {
-                throw new Error(`Erreur création client: ${clientError?.message}`);
+                // Parfois l'ID d'auth ne peut pas être inséré si la table n'a pas de foreign key, 
+                // on gère silencieusement l'erreur et on réessaie sans l'ID
+                if (user && clientError?.code === '23503') {
+                     const { data: newClientFallback, error: fallbackError } = await supabase
+                        .from('clients')
+                        .insert({ telephone: phone, nom_client: ssoFullName, expo_push_token: pushToken || null })
+                        .select('id')
+                        .single();
+                     if (fallbackError || !newClientFallback) throw new Error(`Erreur création client: ${fallbackError?.message}`);
+                     clientId = newClientFallback.id;
+                } else {
+                     throw new Error(`Erreur création client: ${clientError?.message}`);
+                }
+            } else {
+                clientId = newClient.id;
             }
-            clientId = newClient.id;
         }
 
-        // 6. Créer le rendez-vous
+        // 5. Créer le rendez-vous
         const { error: rdvError } = await supabase
             .from('rendez_vous')
             .insert({
@@ -275,16 +367,10 @@ export async function verifyOTP(
 
         if (rdvError) throw new Error(`Erreur création RDV: ${rdvError.message}`);
 
-        // 7. Marquer OTP comme vérifié
-        await supabase
-            .from('otp_custom')
-            .update({ verified: true })
-            .eq('id', otpRecord.id);
-
-        console.log(`[OTP] RDV créé pour ${phone}`);
-        return { success: true, message: 'Validé et RDV créé' };
+        return { success: true, message: 'Rendez-vous créé avec succès' };
     } catch (err: any) {
-        console.error('[verifyOTP Error]', err);
+        console.error('[createDirectBooking Error]', err);
         return { success: false, message: err.message || 'Erreur inconnue' };
     }
 }
+

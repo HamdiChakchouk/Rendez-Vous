@@ -1,13 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, ScrollView,
-    TextInput, ActivityIndicator,
+    TextInput, ActivityIndicator, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { ArrowLeft, User, Calendar as CalIcon, Clock, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
-import { sendOTP } from '../lib/otpService';
+import { sendOTP, createDirectBooking } from '../lib/otpService';
+import { signInWithProvider } from '../lib/authService';
+import { supabaseStorage } from '../lib/storage';
 
 // ── French locale ──────────────────────────────────────────────
 LocaleConfig.locales['fr'] = {
@@ -42,6 +44,9 @@ export default function BookingWizardScreen({ navigation, route }: any) {
     const [isLoading, setIsLoading] = useState(false);
     const [loadingEmployees, setLoadingEmployees] = useState(true);
 
+    const [session, setSession] = useState<any>(null);
+    const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+
     useEffect(() => {
         supabase.from('employes').select('*').eq('salon_id', salon.id).then(({ data }) => {
             setEmployees(data || []);
@@ -50,12 +55,26 @@ export default function BookingWizardScreen({ navigation, route }: any) {
         supabase.from('absences').select('*').eq('salon_id', salon.id).then(({ data }) => {
             setAbsences(data || []);
         });
+
+        // Load Session & Verified Phone
+        supabase.auth.getSession().then(({ data }) => setSession(data.session));
+        const authListener = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess));
+
+        supabaseStorage.getItem('verified_phone').then(val => {
+            if (val) {
+                setVerifiedPhone(val);
+                setPhone(val.replace('+216', ''));
+            }
+        });
+
+        return () => {
+            authListener.data.subscription.unsubscribe();
+        };
     }, []);
 
     // ── Build disabled dates map for the calendar ────────────────
     const disabledDates = useMemo(() => {
         const result: Record<string, any> = {};
-        // Block 90 days window — check each day
         const today = new Date();
         for (let i = 0; i < 90; i++) {
             const d = new Date(today);
@@ -113,30 +132,60 @@ export default function BookingWizardScreen({ navigation, route }: any) {
         });
     }
 
-    async function handleSendOTP() {
+    async function handleSSOLogin(provider: 'google' | 'facebook') {
+        setIsLoading(true);
+        setError('');
+        try {
+            await signInWithProvider(provider);
+        } catch (err: any) {
+            setError("Erreur de connexion. Veuillez réessayer.");
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    async function handleConfirmOrOTP() {
         if (!phone || phone.length < 8) { setError('Veuillez entrer un numéro valide (8 chiffres)'); return; }
         setIsLoading(true);
         setError('');
+        
         const formattedPhone = `+216${phone}`;
+        const bookingData = {
+            salonId: salon.id,
+            serviceId: service.id,
+            employeeId: selectedEmployee || '',
+            date: new Date(selectedDate).toISOString(),
+            time: selectedTime,
+        };
+        const serviceDetails = {
+            serviceName: service.nom_service || service.nom,
+            salonName: salon.nom_salon,
+            address: salon.adresse,
+            employeeName: selectedEmployee === 'any' ? "N'importe qui" :
+                employees.find(e => e.id === selectedEmployee)?.nom_employe || '',
+        };
+
+        // Si le téléphone est déjà vérifié, on contourne l'OTP !
+        if (verifiedPhone === formattedPhone) {
+            const result = await createDirectBooking(formattedPhone, bookingData);
+            setIsLoading(false);
+            if (result.success) {
+                navigation.replace('Confirmation', { phone: formattedPhone, bookingData, serviceDetails });
+            } else {
+                setError(result.message);
+            }
+            return;
+        }
+
+        // Sinon, flux classique OTP
         const result = await sendOTP(formattedPhone);
         setIsLoading(false);
+        
         if (result.success) {
             navigation.navigate('OTPVerification', {
                 phone: formattedPhone,
-                bookingData: {
-                    salonId: salon.id,
-                    serviceId: service.id,
-                    employeeId: selectedEmployee || '',
-                    date: new Date(selectedDate).toISOString(),
-                    time: selectedTime,
-                },
-                serviceDetails: {
-                    serviceName: service.nom_service || service.nom,
-                    salonName: salon.nom_salon,
-                    address: salon.adresse,
-                    employeeName: selectedEmployee === 'any' ? "N'importe qui" :
-                        employees.find(e => e.id === selectedEmployee)?.nom_employe || '',
-                },
+                bookingData,
+                serviceDetails,
             });
         } else {
             setError(result.message);
@@ -146,7 +195,6 @@ export default function BookingWizardScreen({ navigation, route }: any) {
     const slots = getAvailableSlots();
     const progress = (step / 3) * 100;
 
-    // Marked dates for calendar: selected day highlighted + disabled days
     const markedDates = {
         ...disabledDates,
         ...(selectedDate ? {
@@ -157,6 +205,8 @@ export default function BookingWizardScreen({ navigation, route }: any) {
             },
         } : {}),
     };
+
+    const isPhoneVerified = verifiedPhone === `+216${phone}`;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -283,53 +333,101 @@ export default function BookingWizardScreen({ navigation, route }: any) {
                     </View>
                 )}
 
-                {/* ── STEP 3 — Phone & OTP ──────────────────────── */}
+                {/* ── STEP 3 — Auth & Phone ──────────────────────── */}
                 {step === 3 && (
                     <View style={styles.stepSection}>
                         <View style={styles.confirmCard}>
-                            <View style={styles.checkCircle}>
-                                <CheckCircle2 size={32} color="#10B981" />
-                            </View>
-                            <Text style={styles.confirmTitle}>Presque fini !</Text>
-                            <Text style={styles.confirmSubtitle}>
-                                Entrez votre numéro pour recevoir le code de confirmation.
-                            </Text>
-                            <View style={styles.summaryBox}>
-                                <Text style={styles.summaryItem}>📅 {selectedDate} à {selectedTime}</Text>
-                                <Text style={styles.summaryItem}>
-                                    👤 {selectedEmployee === 'any' ? "N'importe qui" : employees.find(e => e.id === selectedEmployee)?.nom_employe}
-                                </Text>
-                                <Text style={styles.summaryItem}>📍 {salon.nom_salon}</Text>
-                            </View>
-                            <View style={styles.phoneRow}>
-                                <View style={styles.countryCode}>
-                                    <Text style={styles.countryCodeText}>+216</Text>
-                                </View>
-                                <TextInput
-                                    style={styles.phoneInput}
-                                    placeholder="Numéro de téléphone"
-                                    placeholderTextColor="#9CA3AF"
-                                    value={phone}
-                                    onChangeText={setPhone}
-                                    keyboardType="phone-pad"
-                                    maxLength={8}
-                                />
-                            </View>
-                            {!!error && (
-                                <View style={styles.errorBox}>
-                                    <AlertCircle size={14} color="#B91C1C" />
-                                    <Text style={styles.errorText}>{error}</Text>
-                                </View>
+                            
+                            {!session ? (
+                                // --- ETAPE AUTHENTIFICATION SSO ---
+                                <>
+                                    <View style={styles.checkCircle}>
+                                        <User size={32} color="#10B981" />
+                                    </View>
+                                    <Text style={styles.confirmTitle}>Identifiez-vous</Text>
+                                    <Text style={styles.confirmSubtitle}>
+                                        Connectez-vous rapidement pour finaliser votre réservation et gagner du temps la prochaine fois.
+                                    </Text>
+                                    
+                                    {!!error && (
+                                        <View style={styles.errorBox}>
+                                            <AlertCircle size={14} color="#B91C1C" />
+                                            <Text style={styles.errorText}>{error}</Text>
+                                        </View>
+                                    )}
+
+                                    <TouchableOpacity 
+                                        style={[styles.ssoBtn, styles.googleBtn, isLoading && { opacity: 0.6 }]}
+                                        onPress={() => handleSSOLogin('google')}
+                                        disabled={isLoading}>
+                                        <Text style={styles.googleBtnText}>Continuer avec Google</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity 
+                                        style={[styles.ssoBtn, styles.fbBtn, isLoading && { opacity: 0.6 }]}
+                                        onPress={() => handleSSOLogin('facebook')}
+                                        disabled={isLoading}>
+                                        <Text style={styles.fbBtnText}>Continuer avec Facebook</Text>
+                                    </TouchableOpacity>
+                                    
+                                    <TouchableOpacity 
+                                        style={styles.skipBtn}
+                                        onPress={() => setSession({ user: { id: 'guest' } })}>
+                                        <Text style={styles.skipBtnText}>Continuer sans compte</Text>
+                                    </TouchableOpacity>
+                                </>
+                            ) : (
+                                // --- ETAPE TELEPHONE & CONFIRMATION ---
+                                <>
+                                    <View style={styles.checkCircle}>
+                                        <CheckCircle2 size={32} color="#10B981" />
+                                    </View>
+                                    <Text style={styles.confirmTitle}>Presque fini !</Text>
+                                    <Text style={styles.confirmSubtitle}>
+                                        {isPhoneVerified 
+                                            ? "Votre numéro est vérifié, confirmez simplement votre réservation." 
+                                            : "Entrez votre numéro pour recevoir le code de confirmation."}
+                                    </Text>
+                                    <View style={styles.summaryBox}>
+                                        <Text style={styles.summaryItem}>📅 {selectedDate} à {selectedTime}</Text>
+                                        <Text style={styles.summaryItem}>
+                                            👤 {selectedEmployee === 'any' ? "N'importe qui" : employees.find(e => e.id === selectedEmployee)?.nom_employe}
+                                        </Text>
+                                        <Text style={styles.summaryItem}>📍 {salon.nom_salon}</Text>
+                                    </View>
+                                    <View style={styles.phoneRow}>
+                                        <View style={styles.countryCode}>
+                                            <Text style={styles.countryCodeText}>+216</Text>
+                                        </View>
+                                        <TextInput
+                                            style={styles.phoneInput}
+                                            placeholder="Numéro de téléphone"
+                                            placeholderTextColor="#9CA3AF"
+                                            value={phone}
+                                            onChangeText={setPhone}
+                                            keyboardType="phone-pad"
+                                            maxLength={8}
+                                        />
+                                    </View>
+                                    {!!error && (
+                                        <View style={styles.errorBox}>
+                                            <AlertCircle size={14} color="#B91C1C" />
+                                            <Text style={styles.errorText}>{error}</Text>
+                                        </View>
+                                    )}
+                                    <TouchableOpacity
+                                        style={[styles.submitBtn, isLoading && { opacity: 0.6 }]}
+                                        onPress={handleConfirmOrOTP}
+                                        disabled={isLoading}>
+                                        {isLoading
+                                            ? <ActivityIndicator color="#fff" />
+                                            : <Text style={styles.submitBtnText}>
+                                                {isPhoneVerified ? "Confirmer la réservation" : "Envoyer le code OTP"}
+                                              </Text>
+                                        }
+                                    </TouchableOpacity>
+                                </>
                             )}
-                            <TouchableOpacity
-                                style={[styles.submitBtn, isLoading && { opacity: 0.6 }]}
-                                onPress={handleSendOTP}
-                                disabled={isLoading}>
-                                {isLoading
-                                    ? <ActivityIndicator color="#fff" />
-                                    : <Text style={styles.submitBtnText}>Envoyer le code OTP</Text>
-                                }
-                            </TouchableOpacity>
                         </View>
                     </View>
                 )}
@@ -377,4 +475,11 @@ const styles = StyleSheet.create({
     phoneInput: { flex: 1, backgroundColor: '#F3F4F6', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, fontSize: 16, color: '#111' },
     submitBtn: { backgroundColor: '#111', paddingVertical: 16, borderRadius: 14, width: '100%', alignItems: 'center', marginTop: 8 },
     submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    ssoBtn: { paddingVertical: 14, borderRadius: 12, width: '100%', alignItems: 'center', marginBottom: 12, borderWidth: 1 },
+    googleBtn: { backgroundColor: '#fff', borderColor: '#D1D5DB' },
+    googleBtnText: { color: '#374151', fontSize: 15, fontWeight: '700' },
+    fbBtn: { backgroundColor: '#1877F2', borderColor: '#1877F2' },
+    fbBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+    skipBtn: { padding: 12, marginTop: 4 },
+    skipBtnText: { color: '#6B7280', fontSize: 14, textDecorationLine: 'underline' },
 });

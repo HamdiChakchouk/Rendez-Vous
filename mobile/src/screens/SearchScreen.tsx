@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, MapPin, Heart, ChevronDown } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
-import { Salon } from '../../../shared/types/database';
+import { Salon } from '../types/database';
 
 const SERVICES = ['Coiffure', 'Barbier', 'Manucure', 'Massage', 'Esthétique'];
 

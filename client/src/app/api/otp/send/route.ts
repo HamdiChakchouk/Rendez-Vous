@@ -45,8 +45,8 @@ export async function POST(req: Request) {
 
         if (insertError) throw insertError;
 
-        // Envoyer le code brut par SMS (jamais le hash)
-        const success = await NotificationService.sendSMS(
+        // Envoyer le code brut via WhatsApp (avec fallback SMS)
+        const success = await NotificationService.sendHybridNotification(
             phone,
             `Votre code de validation RESERVY: ${otp}`
         );
