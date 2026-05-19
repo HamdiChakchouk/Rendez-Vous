@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { ArrowLeft, User, Calendar as CalIcon, Clock, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
-import { sendOTP, createDirectBooking } from '../lib/otpService';
+import { sendOTPViaBackend } from '../lib/apiService';
 import { signInWithProvider } from '../lib/authService';
 import { supabaseStorage } from '../lib/storage';
 
@@ -165,20 +165,21 @@ export default function BookingWizardScreen({ navigation, route }: any) {
                 employees.find(e => e.id === selectedEmployee)?.nom_employe || '',
         };
 
-        // Si le téléphone est déjà vérifié, on contourne l'OTP !
+        // Si le téléphone est déjà vérifié, on passe directement à la confirmation
         if (verifiedPhone === formattedPhone) {
-            const result = await createDirectBooking(formattedPhone, bookingData);
+            // Aller directement à l'écran OTP qui appellera verify avec le bookingData
+            navigation.navigate('OTPVerification', {
+                phone: formattedPhone,
+                bookingData,
+                serviceDetails,
+                skipSend: true, // Signal que l'OTP a déjà été vérifié
+            });
             setIsLoading(false);
-            if (result.success) {
-                navigation.replace('Confirmation', { phone: formattedPhone, bookingData, serviceDetails });
-            } else {
-                setError(result.message);
-            }
             return;
         }
 
-        // Sinon, flux classique OTP
-        const result = await sendOTP(formattedPhone);
+        // Sinon, flux classique OTP via le backend Vercel
+        const result = await sendOTPViaBackend(formattedPhone);
         setIsLoading(false);
         
         if (result.success) {

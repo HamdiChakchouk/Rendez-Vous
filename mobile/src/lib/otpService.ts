@@ -8,10 +8,11 @@
 
 import { supabase } from './supabase';
 
-// ─── Config Twilio (depuis .env) ───
-const TWILIO_ACCOUNT_SID = process.env.EXPO_PUBLIC_TWILIO_ACCOUNT_SID || '';
-const TWILIO_AUTH_TOKEN = process.env.EXPO_PUBLIC_TWILIO_AUTH_TOKEN || '';
-const TWILIO_PHONE = process.env.EXPO_PUBLIC_TWILIO_PHONE || '';
+// ─── Config Twilio (NON UTILISÉ — l'envoi SMS passe désormais par le backend Vercel) ───
+// Ces constantes sont conservées pour compatibilité uniquement.
+const TWILIO_ACCOUNT_SID = '';
+const TWILIO_AUTH_TOKEN = '';
+const TWILIO_PHONE = '';
 
 // ─── SHA-256 pur JavaScript (0 dépendance native, Hermes/Expo Go OK) ─
 function sha256Sync(str: string): string {
