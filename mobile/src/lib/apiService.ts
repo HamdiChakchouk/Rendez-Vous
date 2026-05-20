@@ -83,3 +83,36 @@ export async function verifyOTPViaBackend(
         return { success: false, message: 'Impossible de joindre le serveur. Vérifiez votre connexion.' };
     }
 }
+
+/** Appelle POST /api/bookings via le backend Vercel (contourne l'OTP si numéro déjà vérifié) */
+export async function createBookingDirectly(
+    phone: string,
+    bookingData: BookingData
+): Promise<ApiResult> {
+    try {
+        const dateFormatted = new Date(bookingData.date).toISOString().split('T')[0];
+
+        const res = await fetch(`${BASE_URL}/api/bookings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                phone,
+                bookingData: {
+                    ...bookingData,
+                    date: dateFormatted,
+                },
+            }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            return { success: true, message: data.message || 'Validé' };
+        } else {
+            return { success: false, message: data.error || 'Erreur lors de la réservation' };
+        }
+    } catch (err: any) {
+        console.error('[createBookingDirectly] Erreur réseau:', err);
+        return { success: false, message: 'Impossible de joindre le serveur. Vérifiez votre connexion.' };
+    }
+}

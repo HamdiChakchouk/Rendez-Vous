@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { ArrowLeft, User, Calendar as CalIcon, Clock, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
-import { sendOTPViaBackend } from '../lib/apiService';
+import { sendOTPViaBackend, createBookingDirectly } from '../lib/apiService';
 import { signInWithProvider } from '../lib/authService';
 import { supabaseStorage } from '../lib/storage';
 
@@ -165,16 +165,16 @@ export default function BookingWizardScreen({ navigation, route }: any) {
                 employees.find(e => e.id === selectedEmployee)?.nom_employe || '',
         };
 
-        // Si le téléphone est déjà vérifié, on passe directement à la confirmation
+        // Si le téléphone est déjà vérifié, on passe directement à la création de réservation
         if (verifiedPhone === formattedPhone) {
-            // Aller directement à l'écran OTP qui appellera verify avec le bookingData
-            navigation.navigate('OTPVerification', {
-                phone: formattedPhone,
-                bookingData,
-                serviceDetails,
-                skipSend: true, // Signal que l'OTP a déjà été vérifié
-            });
+            const result = await createBookingDirectly(formattedPhone, bookingData);
             setIsLoading(false);
+            
+            if (result.success) {
+                navigation.replace('Confirmation', { phone: formattedPhone, bookingData, serviceDetails });
+            } else {
+                setError(result.message);
+            }
             return;
         }
 
