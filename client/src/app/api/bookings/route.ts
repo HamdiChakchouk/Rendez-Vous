@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { NotificationService } from '@/services/notificationService';
 import { ok, err } from '@/lib/api-response';
 
 export async function POST(req: Request) {
@@ -85,6 +86,26 @@ export async function POST(req: Request) {
             });
 
         if (rdvError) throw new Error(`Erreur création RDV: ${rdvError.message}`);
+
+        // Envoyer une notification de confirmation (Push en priorité, SMS en fallback)
+        try {
+            const { data: salonData } = await supabaseAdmin
+                .from('salons')
+                .select('nom_salon')
+                .eq('id', bookingData.salonId)
+                .single();
+            if (salonData) {
+                await NotificationService.sendAppointmentConfirmation(
+                    phone,
+                    salonData.nom_salon,
+                    bookingData.date,
+                    bookingData.time
+                );
+            }
+        } catch (notifErr) {
+            // Non bloquant
+            console.warn('[CreateBooking] Notification failed:', notifErr);
+        }
 
         return ok({ message: 'RDV créé avec succès' });
 

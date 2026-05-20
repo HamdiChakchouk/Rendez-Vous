@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { NotificationService } from '@/services/notificationService';
 import { createHash } from 'crypto';
 import { ok, err } from '@/lib/api-response';
 
@@ -118,6 +119,27 @@ export async function POST(req: Request) {
             if (rdvError) throw new Error(`Erreur création RDV: ${rdvError.message}`);
 
             console.log(`[OTP Verify] Appointment created for client ${clientId}`);
+
+            // Envoyer une notification de confirmation (Push ou SMS)
+            const salonName = service.salon_id; // On a seulement l'ID ici, on va récupérer le nom
+            try {
+                const { data: salonData } = await supabaseAdmin
+                    .from('salons')
+                    .select('nom_salon')
+                    .eq('id', bookingData.salonId)
+                    .single();
+                if (salonData) {
+                    await NotificationService.sendAppointmentConfirmation(
+                        phone,
+                        salonData.nom_salon,
+                        bookingData.date,
+                        bookingData.time
+                    );
+                }
+            } catch (notifErr) {
+                // Non bloquant : la réservation est créée même si la notif échoue
+                console.warn('[OTP Verify] Notification failed:', notifErr);
+            }
         } else {
             console.warn('[OTP Verify] No bookingData, OTP verified only.');
         }

@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
 
 import { registerForPushNotificationsAsync } from './src/lib/pushNotifications';
+import { registerPushToken } from './src/lib/apiService';
 
 import MainTabNavigator from './src/navigation/MainTabNavigator';
 import SearchScreen from './src/screens/SearchScreen';
@@ -36,6 +37,11 @@ export default function App() {
         const token = await registerForPushNotificationsAsync();
         if (token) {
           await AsyncStorage.setItem('expo_push_token', token);
+          // Synchroniser le token avec le backend si un numéro vérifié existe déjà
+          const verifiedPhone = await AsyncStorage.getItem('verified_phone');
+          if (verifiedPhone) {
+            await registerPushToken(verifiedPhone, token);
+          }
         }
       } catch (error) {
         console.error("Erreur d'initialisation des notifications:", error);

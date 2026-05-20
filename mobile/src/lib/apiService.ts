@@ -74,6 +74,18 @@ export async function verifyOTPViaBackend(
         if (res.ok) {
             // Mémoriser le téléphone vérifié pour éviter l'OTP la prochaine fois
             await AsyncStorage.setItem('verified_phone', phone);
+
+            // Enregistrer le push token en DB pour les notifications futures
+            const pushToken = await AsyncStorage.getItem('expo_push_token');
+            if (pushToken) {
+                // Non bloquant
+                fetch(`${BASE_URL}/api/clients/register-token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, pushToken }),
+                }).catch(() => {});
+            }
+
             return { success: true, message: data.message || 'Validé' };
         } else {
             return { success: false, message: data.error || 'Code invalide ou expiré' };
@@ -114,5 +126,23 @@ export async function createBookingDirectly(
     } catch (err: any) {
         console.error('[createBookingDirectly] Erreur réseau:', err);
         return { success: false, message: 'Impossible de joindre le serveur. Vérifiez votre connexion.' };
+    }
+}
+
+/**
+ * Enregistre le push token Expo dans la base de données Supabase via le backend.
+ * Appelé au lancement de l'app dès qu'un numéro vérifié est connu.
+ */
+export async function registerPushToken(phone: string, pushToken: string): Promise<void> {
+    try {
+        await fetch(`${BASE_URL}/api/clients/register-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, pushToken }),
+        });
+        console.log('[registerPushToken] Token envoyé au backend pour', phone);
+    } catch (err) {
+        // Non bloquant — si ça échoue, l'app continue quand même
+        console.warn('[registerPushToken] Échec silencieux:', err);
     }
 }
