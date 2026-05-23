@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIn
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, CheckCircle, XCircle, Store, Users, MapPin, Phone, Building } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { BASE_URL } from '../lib/apiService';
+
 
 export default function AdminDashboardScreen({ navigation }: any) {
     const [activeTab, setActiveTab] = useState<'demandes' | 'salons'>('demandes');
@@ -56,7 +58,8 @@ export default function AdminDashboardScreen({ navigation }: any) {
                     setProcessing(requestId);
                     try {
                         const { data: { session } } = await supabase.auth.getSession();
-                        const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/admin/approve-subscription`, {
+                        const res = await fetch(`${BASE_URL}/api/admin/approve-subscription`, {
+
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',

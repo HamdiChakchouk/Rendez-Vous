@@ -39,7 +39,7 @@ export default function ClientProfileScreen({ navigation, route }: any) {
                 id: user.id,
                 prenom: form.prenom,
                 nom: form.nom,
-                phone: form.telephone,
+                telephone: form.telephone,
                 email: form.email,
                 date_naissance: form.dateNaissance || null,
                 ville: form.ville,

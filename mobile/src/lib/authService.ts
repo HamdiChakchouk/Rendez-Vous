@@ -5,8 +5,9 @@ import { supabase } from './supabase';
 
 WebBrowser.maybeCompleteAuthSession();
 
-// On génère l'URI de redirection pour l'application Expo (qui fonctionnera dans Expo Go et dans les builds autonomes)
 const redirectTo = makeRedirectUri();
+console.log('[Auth] Redirect URI configurée pour Expo Go:', redirectTo);
+
 
 export const createSessionFromUrl = async (url: string) => {
     const { params, errorCode } = QueryParams.getQueryParams(url);

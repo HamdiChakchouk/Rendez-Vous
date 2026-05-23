@@ -299,7 +299,7 @@ export async function createDirectBooking(
         if (!existingClient) {
             const { data: clientByPhone } = await supabase
                 .from('clients')
-                .select('id')
+                .select('id, telephone')
                 .eq('telephone', phone)
                 .maybeSingle();
             if (clientByPhone) existingClient = clientByPhone;

@@ -149,9 +149,16 @@ CREATE TABLE public.profiles (
     nom TEXT,
     prenom TEXT,
     telephone TEXT,
+    email TEXT,
+    date_naissance DATE,
+    ville TEXT,
     onboarding_completed BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Index pour la recherche rapide par téléphone (utilisé par notificationService)
+CREATE INDEX IF NOT EXISTS idx_profiles_telephone ON public.profiles(telephone);
 
 -- Helper function to avoid recursion
 CREATE OR REPLACE FUNCTION public.is_super_admin()
@@ -196,3 +203,32 @@ CREATE POLICY "Public manage for rendez_vous" ON rendez_vous FOR ALL USING (true
 -- - admins
 -- - waitlist (if intended to be private)
 -- - clients (only accessible via service_role/admin)
+
+-- Table: notifications
+-- Historique in-app des notifications pour chaque compte utilisateur
+CREATE TABLE public.notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    titre TEXT NOT NULL,
+    contenu TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- Les utilisateurs ne voient que leurs propres notifications
+CREATE POLICY "Users can view their own notifications"
+ON public.notifications FOR SELECT
+USING (auth.uid() = user_id);
+
+-- Les utilisateurs peuvent marquer leurs notifications comme lues
+CREATE POLICY "Users can update their own notifications"
+ON public.notifications FOR UPDATE
+USING (auth.uid() = user_id);
+
+-- Le service backend (service_role) peut insérer des notifications pour n'importe quel utilisateur
+CREATE POLICY "Service role can insert notifications"
+ON public.notifications FOR INSERT
+TO service_role
+WITH CHECK (true);

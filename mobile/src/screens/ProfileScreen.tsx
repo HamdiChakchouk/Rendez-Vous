@@ -129,7 +129,7 @@ export default function ProfileScreen({ navigation }: any) {
             label: 'Notifications',
             color: '#374151',
             bg: '#F3F4F6',
-            onPress: () => Alert.alert('Bientôt disponible', 'Les notifications push arrivent prochainement.'),
+            onPress: () => navigation.navigate('Notifications'),
             always: true,
         },
         {
@@ -137,7 +137,7 @@ export default function ProfileScreen({ navigation }: any) {
             label: 'Aide & Support',
             color: '#374151',
             bg: '#F3F4F6',
-            onPress: () => Linking.openURL('mailto:support@reservy.tn'),
+            onPress: () => Linking.openURL('mailto:reservy.tn@gmail.com'),
             always: true,
         },
         {

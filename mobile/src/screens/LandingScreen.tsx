@@ -72,12 +72,7 @@ export default function LandingScreen({ navigation }: any) {
                 </TouchableOpacity>
             </View>
 
-            {/* Dots indicator */}
-            <View style={styles.dotsContainer}>
-                <View style={[styles.dot, styles.dotActive]} />
-                <View style={styles.dot} />
-                <View style={styles.dot} />
-            </View>
+
 
             {/* Section subtitle */}
             <View style={styles.bottomBanner}>
@@ -181,22 +176,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 
-    dotsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        paddingBottom: 12,
-        gap: 6,
-    },
-    dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: 'rgba(255,255,255,0.4)',
-    },
-    dotActive: {
-        backgroundColor: '#fff',
-        width: 18,
-    },
 
     bottomBanner: {
         backgroundColor: '#fff',

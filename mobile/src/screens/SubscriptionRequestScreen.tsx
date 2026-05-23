@@ -6,6 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Building2, Mail, Phone, User, MapPin, ChevronDown, Check } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { BASE_URL } from '../lib/apiService';
+
 
 const TYPES = [
     { value: 'coiffure_homme', label: '✂️ Coiffure Homme' },
@@ -53,7 +55,8 @@ export default function SubscriptionRequestScreen({ navigation, route }: any) {
 
         setLoading(true);
         try {
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/subscription-requests`, {
+            const res = await fetch(`${BASE_URL}/api/subscription-requests`, {
+
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(form),
@@ -118,7 +121,7 @@ export default function SubscriptionRequestScreen({ navigation, route }: any) {
                 <Text style={s.label}>Nom complet *</Text>
                 <View style={s.inputWrap}>
                     <User size={16} color="#9CA3AF" />
-                    <TextInput style={s.input} placeholder="Hamdi Chakchouk" placeholderTextColor="#9CA3AF"
+                    <TextInput style={s.input} placeholder="Ex: Jean Dupont" placeholderTextColor="#9CA3AF"
                         value={form.nom_prenom} onChangeText={v => setForm({ ...form, nom_prenom: v })} />
                 </View>
 

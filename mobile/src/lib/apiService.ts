@@ -9,7 +9,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // URL de base du backend (toujours la version de production Vercel)
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://reservy-one.vercel.app';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://reservy-one.vercel.app';
+
 
 export interface BookingData {
     salonId: string;

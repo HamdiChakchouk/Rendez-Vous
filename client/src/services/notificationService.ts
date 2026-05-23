@@ -41,6 +41,71 @@ export class NotificationService {
 
     // ─── Stratégie de Cascade : Push -> Meta WhatsApp -> Twilio SMS ────────────────
     static async sendHybridNotification(to: string, message: string): Promise<boolean> {
+        // ─── Persistance dans la table notifications (historique in-app) ─────────────
+        try {
+            // Lookup 1 : Chercher un profil par numéro de téléphone (utilisateurs connectés)
+            let profileId: string | null = null;
+            const { data: profileByPhone } = await supabaseAdmin
+                .from('profiles')
+                .select('id')
+                .eq('telephone', to)
+                .maybeSingle();
+
+            if (profileByPhone) {
+                profileId = profileByPhone.id;
+            } else {
+                // Lookup 2 : Fallback pour clients OTP — vérifier si ce client est lié à un compte auth
+                // (Cas : le client a réservé via OTP puis s'est connecté mais n'a pas renseigné son tél dans le profil)
+                const { data: clientData } = await supabaseAdmin
+                    .from('clients')
+                    .select('id')
+                    .eq('telephone', to)
+                    .maybeSingle();
+
+                if (clientData) {
+                    // L'id du client peut correspondre à l'id auth.users si l'utilisateur est connecté
+                    const { data: profileByClientId } = await supabaseAdmin
+                        .from('profiles')
+                        .select('id')
+                        .eq('id', clientData.id)
+                        .maybeSingle();
+
+                    if (profileByClientId) {
+                        profileId = profileByClientId.id;
+                    }
+                }
+            }
+
+            if (profileId) {
+                // Catégorisation automatique du titre
+                let titre = 'Notification';
+                if (message.includes('confirmé') || message.includes('✅')) {
+                    titre = 'Rendez-vous confirmé';
+                } else if (message.toLowerCase().includes('rappel')) {
+                    titre = 'Rappel de rendez-vous';
+                } else if (message.toLowerCase().includes('annulé') || message.toLowerCase().includes('annulation')) {
+                    titre = 'Rendez-vous annulé';
+                }
+
+                // Nettoyer le préfixe "Reservy :"
+                const contenu = message.replace(/^Reservy\s*:\s*/i, '');
+
+                await supabaseAdmin
+                    .from('notifications')
+                    .insert({
+                        user_id: profileId,
+                        titre,
+                        contenu,
+                        is_read: false
+                    });
+                console.log(`[Notifications DB] Notification enregistrée pour user_id: ${profileId}`);
+            } else {
+                console.log(`[Notifications DB] Pas de profil trouvé pour ${to} — notification in-app ignorée, SMS/Push continueront.`);
+            }
+        } catch (dbErr) {
+            console.error('Erreur lors de la persistance de la notification:', dbErr);
+        }
+
         // 1. Tenter la Notification Push en priorité (Gratuit et natif)
         try {
             // Chercher si ce numéro de téléphone possède un Push Token enregistré

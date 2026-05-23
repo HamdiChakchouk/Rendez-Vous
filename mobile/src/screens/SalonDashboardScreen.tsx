@@ -43,8 +43,9 @@ export default function SalonDashboardScreen({ navigation }: any) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [saving, setSaving] = useState(false);
     const [newApt, setNewApt] = useState({ nom_client: '', telephone: '', service_id: '', employe_id: '', heure_rdv: '' });
+    const [period, setPeriod] = useState<'today' | 'tomorrow' | 'week' | 'month'>('today');
 
-    useEffect(() => { loadData(); }, []);
+    useEffect(() => { loadData(); }, [period]);
 
     async function loadData(silent = false) {
         if (!silent) setLoading(true);
@@ -84,14 +85,34 @@ export default function SalonDashboardScreen({ navigation }: any) {
             if (svcsRes.data) setServices(svcsRes.data);
             if (empsRes.data) setEmployees(empsRes.data);
 
-            const today = new Date().toISOString().split('T')[0];
+            const todayObj = new Date();
+            const todayStr = todayObj.toISOString().split('T')[0];
+            let startDateStr = todayStr;
+            let endDateStr = todayStr;
+
+            if (period === 'tomorrow') {
+                const tomorrow = new Date(todayObj);
+                tomorrow.setDate(todayObj.getDate() + 1);
+                startDateStr = tomorrow.toISOString().split('T')[0];
+                endDateStr = startDateStr;
+            } else if (period === 'week') {
+                const nextWeek = new Date(todayObj);
+                nextWeek.setDate(todayObj.getDate() + 7);
+                endDateStr = nextWeek.toISOString().split('T')[0];
+            } else if (period === 'month') {
+                const nextMonth = new Date(todayObj);
+                nextMonth.setMonth(todayObj.getMonth() + 1);
+                endDateStr = nextMonth.toISOString().split('T')[0];
+            }
 
             // Construire la requête RDV selon le rôle
             let aptsQuery = supabase
                 .from('rendez_vous')
                 .select('*, client:clients(nom_client, telephone), service:services(nom_service, prix), employe:employes(nom_employe)')
                 .eq('salon_id', sid)
-                .eq('date_rdv', today)
+                .gte('date_rdv', startDateStr)
+                .lte('date_rdv', endDateStr)
+                .order('date_rdv')
                 .order('heure_rdv');
 
             // Le coiffeur ne voit que ses propres RDV
@@ -204,19 +225,38 @@ export default function SalonDashboardScreen({ navigation }: any) {
                     <View style={styles.statCard}>
                         <Calendar size={18} color="#1152d4" />
                         <Text style={styles.statValue}>{stats.rdv}</Text>
-                        <Text style={styles.statLabel}>RDV Aujourd'hui</Text>
+                        <Text style={styles.statLabel}>RDV ({period === 'today' ? 'Aujourd\'hui' : period === 'tomorrow' ? 'Demain' : period === 'week' ? '7 Jours' : 'Ce Mois'})</Text>
                     </View>
                     <View style={[styles.statCard, { borderColor: '#D1FAE5' }]}>
                         <TrendingUp size={18} color="#10B981" />
                         <Text style={[styles.statValue, { color: '#10B981' }]}>{stats.ca} DT</Text>
-                        <Text style={styles.statLabel}>CA Journalier</Text>
+                        <Text style={styles.statLabel}>CA ({period === 'today' ? 'Jour' : period === 'tomorrow' ? 'Demain' : period === 'week' ? '7 Jours' : 'Ce Mois'})</Text>
                     </View>
                 </View>
             )}
 
+            {/* Period Filters */}
+            <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    {(['today', 'tomorrow', 'week', 'month'] as const).map(p => (
+                        <TouchableOpacity 
+                            key={p} 
+                            onPress={() => setPeriod(p)}
+                            style={[styles.periodChip, period === p && styles.periodChipActive]}
+                        >
+                            <Text style={[styles.periodChipText, period === p && styles.periodChipTextActive]}>
+                                {p === 'today' ? 'Aujourd\'hui' : p === 'tomorrow' ? 'Demain' : p === 'week' ? '7 Jours' : 'Ce Mois'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+
             {/* Appointments */}
             <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Rendez-vous du jour</Text>
+                <Text style={styles.sectionTitle}>
+                    {period === 'today' ? 'Rendez-vous du jour' : period === 'tomorrow' ? 'Rendez-vous de demain' : period === 'week' ? 'Les 7 prochains jours' : 'Mois en cours'}
+                </Text>
                 <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)}>
                     <Plus size={16} color="#fff" />
                     <Text style={styles.addBtnText}>Nouveau</Text>
@@ -231,7 +271,7 @@ export default function SalonDashboardScreen({ navigation }: any) {
                 ListEmptyComponent={
                     <View style={styles.emptyBox}>
                         <Calendar size={40} color="#E5E7EB" />
-                        <Text style={styles.emptyText}>Aucun rendez-vous aujourd'hui</Text>
+                        <Text style={styles.emptyText}>Aucun rendez-vous sur cette période</Text>
                         <TouchableOpacity style={styles.addBtnOutline} onPress={() => setShowAddModal(true)}>
                             <Text style={styles.addBtnOutlineText}>+ Ajouter un RDV</Text>
                         </TouchableOpacity>
@@ -240,7 +280,14 @@ export default function SalonDashboardScreen({ navigation }: any) {
                 renderItem={({ item: apt }) => (
                     <View style={styles.aptCard}>
                         <View style={styles.aptTime}>
-                            <Text style={styles.aptTimeText}>{apt.heure_rdv?.substring(0, 5)}</Text>
+                            {period === 'week' || period === 'month' ? (
+                                <>
+                                    <Text style={[styles.aptTimeText, { fontSize: 11, color: '#6B7280' }]}>{apt.date_rdv?.substring(5, 10).replace('-', '/')}</Text>
+                                    <Text style={[styles.aptTimeText, { fontSize: 13 }]}>{apt.heure_rdv?.substring(0, 5)}</Text>
+                                </>
+                            ) : (
+                                <Text style={styles.aptTimeText}>{apt.heure_rdv?.substring(0, 5)}</Text>
+                            )}
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={styles.aptClient}>{apt.client?.nom_client || 'Client Anonyme'}</Text>
@@ -341,6 +388,10 @@ const styles = StyleSheet.create({
     addBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
     addBtnOutline: { marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: '#111' },
     addBtnOutlineText: { fontSize: 14, fontWeight: '700', color: '#111' },
+    periodChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB' },
+    periodChipActive: { backgroundColor: '#111', borderColor: '#111' },
+    periodChipText: { fontSize: 13, fontWeight: '700', color: '#6B7280' },
+    periodChipTextActive: { color: '#fff' },
     emptyBox: { alignItems: 'center', padding: 40, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#F3F4F6', borderStyle: 'dashed' },
     emptyText: { fontSize: 14, color: '#9CA3AF', fontWeight: '600', marginTop: 12 },
     aptCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#F3F4F6' },

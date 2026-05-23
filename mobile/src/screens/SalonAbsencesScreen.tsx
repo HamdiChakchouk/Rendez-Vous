@@ -7,9 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import {
     ArrowLeft, Plus, Check, X, Calendar as CalendarIcon,
-    Clock, AlertCircle, ChevronDown, MessageSquare,
+    Clock, AlertCircle, ChevronDown, MessageSquare, CheckSquare, Square
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { BASE_URL } from '../lib/apiService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Absence = {
@@ -118,6 +119,7 @@ export default function SalonAbsencesScreen({ navigation }: any) {
     const [absences, setAbsences] = useState<Absence[]>([]);
     const [employees, setEmployees] = useState<{ id: string; nom_employe: string }[]>([]);
     const [currentEmployeId, setCurrentEmployeId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
 
     // Modal states
     const [showAddModal, setShowAddModal] = useState(false);
@@ -126,6 +128,12 @@ export default function SalonAbsencesScreen({ navigation }: any) {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectingId, setRejectingId] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState('');
+
+    // Nouveaux états pour la modale de conflits de RDV
+    const [overlappingApts, setOverlappingApts] = useState<any[]>([]);
+    const [selectedAptsToCancel, setSelectedAptsToCancel] = useState<string[]>([]);
+    const [showOverlapModal, setShowOverlapModal] = useState(false);
+    const [pendingAbsenceId, setPendingAbsenceId] = useState<string | null>(null);
 
     // Form
     const [form, setForm] = useState({
@@ -326,6 +334,50 @@ export default function SalonAbsencesScreen({ navigation }: any) {
 
     // ── Approve ────────────────────────────────────────────────────────────────
     async function approveAbsence(id: string) {
+        try {
+            const abs = absences.find(a => a.id === id);
+            if (!abs) return;
+
+            setSaving(true);
+            
+            let query = supabase
+                .from('rendez_vous')
+                .select('id, date_rdv, heure_rdv, client:clients(nom_client, telephone), service:services(nom_service)')
+                .eq('employe_id', abs.employe_id)
+                .in('statut', ['pending', 'confirmed', 'reminded']);
+                
+            if (abs.is_half_day && abs.heure_debut && abs.heure_fin) {
+                query = query.eq('date_rdv', abs.date_debut)
+                             .gte('heure_rdv', abs.heure_debut)
+                             .lte('heure_rdv', abs.heure_fin);
+            } else {
+                query = query.gte('date_rdv', abs.date_debut)
+                             .lte('date_rdv', abs.date_fin);
+            }
+            
+            const { data: conflicts, error } = await query;
+            setSaving(false);
+            
+            if (error) {
+                Alert.alert('Erreur', 'Impossible de vérifier les conflits de rendez-vous.');
+                return;
+            }
+            
+            if (conflicts && conflicts.length > 0) {
+                setOverlappingApts(conflicts);
+                setSelectedAptsToCancel(conflicts.map((c: any) => c.id));
+                setPendingAbsenceId(id);
+                setShowOverlapModal(true);
+            } else {
+                confirmApproveNoConflict(id);
+            }
+        } catch(e) {
+            setSaving(false);
+            console.error(e);
+        }
+    }
+
+    function confirmApproveNoConflict(id: string) {
         Alert.alert('Valider', 'Confirmer la validation de cette absence ?', [
             { text: 'Annuler', style: 'cancel' },
             {
@@ -335,6 +387,43 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                 }
             },
         ]);
+    }
+
+    async function handleConfirmOverlap() {
+        if (!pendingAbsenceId) return;
+        setSaving(true);
+        try {
+            await supabase.from('absences').update({ statut: 'approved', updated_at: new Date().toISOString() }).eq('id', pendingAbsenceId);
+            
+            if (selectedAptsToCancel.length > 0) {
+                const res = await fetch(`${BASE_URL}/api/manager/cancel-appointments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        appointmentIds: selectedAptsToCancel,
+                        reason: 'indisponibilité exceptionnelle du collaborateur'
+                    })
+                });
+                if (!res.ok) {
+                    console.warn('Erreur lors de l\'annulation des RDV via l\'API');
+                }
+            }
+            
+            setShowOverlapModal(false);
+            setPendingAbsenceId(null);
+            await fetchData();
+            Alert.alert('Succès', 'Absence validée et rendez-vous mis à jour avec succès.');
+        } catch(e: any) {
+            Alert.alert('Erreur', e.message);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    function toggleAptCancel(id: string) {
+        setSelectedAptsToCancel(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
     }
 
     // ── Reject ─────────────────────────────────────────────────────────────────
@@ -476,18 +565,36 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                 </TouchableOpacity>
             </View>
 
+            {/* Tabs */}
+            <View style={s.tabsContainer}>
+                <TouchableOpacity 
+                    style={[s.tabBtn, activeTab === 'pending' && s.tabBtnActive]} 
+                    onPress={() => setActiveTab('pending')}
+                >
+                    <Text style={[s.tabTxt, activeTab === 'pending' && s.tabTxtActive]}>À traiter</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    style={[s.tabBtn, activeTab === 'history' && s.tabBtnActive]} 
+                    onPress={() => setActiveTab('history')}
+                >
+                    <Text style={[s.tabTxt, activeTab === 'history' && s.tabTxtActive]}>Historique</Text>
+                </TouchableOpacity>
+            </View>
+
             {loading ? (
                 <ActivityIndicator size="large" color="#111" style={{ flex: 1 }} />
             ) : (
                 <FlatList
-                    data={absences}
+                    data={absences.filter(a => activeTab === 'pending' ? a.statut === 'pending' : a.statut !== 'pending')}
                     keyExtractor={i => i.id}
                     contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
                         <View style={s.emptyBox}>
                             <CalendarIcon size={40} color="#E5E7EB" />
-                            <Text style={s.emptyTxt}>Aucune absence enregistrée</Text>
+                            <Text style={s.emptyTxt}>
+                                {activeTab === 'pending' ? 'Aucune demande en attente 🎉' : 'Aucun historique d\'absence'}
+                            </Text>
                             <TouchableOpacity style={s.emptyAddBtn} onPress={openAdd}>
                                 <Text style={s.emptyAddTxt}>+ Ajouter une absence</Text>
                             </TouchableOpacity>
@@ -647,6 +754,59 @@ export default function SalonAbsencesScreen({ navigation }: any) {
                     </View>
                 </View>
             </Modal>
+
+            {/* ── Modal Conflits de RDV ────────────────────────────────────────── */}
+            <Modal visible={showOverlapModal} transparent animationType="slide">
+                <View style={s.rejectOverlay}>
+                    <View style={[s.rejectModal, { maxHeight: '80%' }]}>
+                        <View style={s.modalHead}>
+                            <Text style={s.modalTitle}>Attention : Conflits de RDV</Text>
+                            <TouchableOpacity onPress={() => setShowOverlapModal(false)}>
+                                <X size={22} color="#9CA3AF" />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={{ padding: 20 }}>
+                            <Text style={{ fontSize: 14, color: '#374151', marginBottom: 16 }}>
+                                Cette absence chevauche {overlappingApts.length} rendez-vous. Sélectionnez ceux que vous souhaitez annuler automatiquement (les clients seront notifiés) :
+                            </Text>
+                            <ScrollView style={{ maxHeight: 250, marginBottom: 16 }}>
+                                {overlappingApts.map(apt => {
+                                    const isSelected = selectedAptsToCancel.includes(apt.id);
+                                    return (
+                                        <TouchableOpacity 
+                                            key={apt.id} 
+                                            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', gap: 10 }}
+                                            onPress={() => toggleAptCancel(apt.id)}
+                                        >
+                                            {isSelected ? <CheckSquare size={20} color="#111" /> : <Square size={20} color="#9CA3AF" />}
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 15, fontWeight: '800', color: '#111' }}>{apt.client?.nom_client || 'Client Anonyme'}</Text>
+                                                <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginTop: 2 }}>📞 {apt.client?.telephone || 'Aucun numéro'}</Text>
+                                                <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{apt.service?.nom_service} • {apt.date_rdv} à {apt.heure_rdv.substring(0, 5)}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+                            
+                            <TouchableOpacity 
+                                style={[s.submitBtn, { backgroundColor: '#DC2626', marginBottom: 8 }]} 
+                                onPress={handleConfirmOverlap}
+                                disabled={saving}
+                            >
+                                {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.submitBtnTxt}>Valider l'absence & Annuler la sélection</Text>}
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={{ paddingVertical: 12, alignItems: 'center', marginTop: 8 }} 
+                                onPress={() => setShowOverlapModal(false)}
+                            >
+                                <Text style={{ fontSize: 14, fontWeight: '600', color: '#6B7280' }}>Retour</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
         </SafeAreaView>
     );
 }
@@ -657,6 +817,11 @@ const s = StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
     title: { fontSize: 18, fontWeight: '900', color: '#111', flex: 1 },
     addBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' },
+    tabsContainer: { flexDirection: 'row', backgroundColor: '#F3F4F6', marginHorizontal: 20, marginTop: 16, marginBottom: 8, borderRadius: 12, padding: 4 },
+    tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },
+    tabBtnActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
+    tabTxt: { fontSize: 13, fontWeight: '700', color: '#9CA3AF' },
+    tabTxtActive: { color: '#111' },
     emptyBox: { alignItems: 'center', padding: 60, gap: 12 },
     emptyTxt: { fontSize: 14, color: '#9CA3AF', fontWeight: '600' },
     emptyAddBtn: { marginTop: 4, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, borderColor: '#111' },

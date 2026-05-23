@@ -6,9 +6,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Plus, Trash2, Save, Users, X, UserPlus, Mail } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
+import { BASE_URL } from '../lib/apiService';
 
 // Use the env variable for the API URL
-const API_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/manager/create-coiffeur`; 
+const API_URL = `${BASE_URL}/api/manager/create-coiffeur`; 
 
 export default function SalonSettingsScreen({ navigation }: any) {
     const [loading, setLoading] = useState(true);
@@ -111,7 +112,8 @@ export default function SalonSettingsScreen({ navigation }: any) {
                         const { data: { session } } = await supabase.auth.getSession();
                         if (!session?.access_token) throw new Error('Token manquant');
                         
-                        const delUrl = `${process.env.EXPO_PUBLIC_API_URL}/api/manager/delete-coiffeur`;
+                        const delUrl = `${BASE_URL}/api/manager/delete-coiffeur`;
+
                         const res = await fetch(delUrl, {
                             method: 'POST',
                             headers: {
