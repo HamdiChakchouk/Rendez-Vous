@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase';
 
 const { width } = Dimensions.get('window');
 
+const DAYS_FR: Record<string, string> = {
     monday: 'Lundi', tuesday: 'Mardi', wednesday: 'Mercredi', thursday: 'Jeudi', friday: 'Vendredi', saturday: 'Samedi', sunday: 'Dimanche',
     lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi', vendredi: 'Vendredi', samedi: 'Samedi', dimanche: 'Dimanche',
 };
