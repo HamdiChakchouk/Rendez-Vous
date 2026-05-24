@@ -35,6 +35,8 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   const navigationRef = useRef<any>(null);
+  const [isNavigationReady, setIsNavigationReady] = React.useState(false);
+  const initialUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Gérer le deep link de réinitialisation de mot de passe
@@ -53,8 +55,14 @@ export default function App() {
             refresh_token: params.refresh_token,
           });
         }
+        
         // Naviguer vers l'écran de reset
-        navigationRef.current?.navigate('ResetPassword');
+        if (navigationRef.current?.isReady()) {
+            navigationRef.current.navigate('ResetPassword');
+        } else {
+            // Si la navigation n'est pas prête, on stocke l'URL pour la traiter après
+            initialUrlRef.current = url;
+        }
       }
     };
 
@@ -66,6 +74,16 @@ export default function App() {
 
     return () => subscription.remove();
   }, []);
+
+  useEffect(() => {
+    if (isNavigationReady && initialUrlRef.current) {
+        // Traiter l'URL en attente une fois la navigation prête
+        if (initialUrlRef.current.includes('type=recovery') || initialUrlRef.current.includes('reset-password')) {
+            navigationRef.current?.navigate('ResetPassword');
+        }
+        initialUrlRef.current = null;
+    }
+  }, [isNavigationReady]);
 
   useEffect(() => {
     // Demander la permission et récupérer le token Push au lancement de l'application
@@ -91,7 +109,10 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer 
+          ref={navigationRef}
+          onReady={() => setIsNavigationReady(true)}
+        >
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             {/* Main Tab App */}
             <Stack.Screen name="MainTabs" component={MainTabNavigator} />
