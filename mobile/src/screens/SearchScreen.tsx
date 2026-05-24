@@ -10,7 +10,7 @@ import {
     ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, MapPin, Heart, ChevronDown } from 'lucide-react-native';
+import { User, MapPin, Heart, ChevronDown, Globe } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { Salon } from '../types/database';
 
@@ -23,9 +23,22 @@ export default function SearchScreen({ navigation }: any) {
     const [showServiceDropdown, setShowServiceDropdown] = useState(false);
     const [favorites, setFavorites] = useState<string[]>([]);
 
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
     useEffect(() => {
         fetchSalons();
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setIsLoggedIn(!!user);
+        });
     }, []);
+
+    function handleProfilePress() {
+        if (isLoggedIn) {
+            navigation.navigate('MainTabs', { screen: 'Profil' });
+        } else {
+            navigation.navigate('Auth');
+        }
+    }
 
     async function fetchSalons() {
         try {
@@ -91,11 +104,15 @@ export default function SearchScreen({ navigation }: any) {
             {/* Header */}
             <View style={styles.header}>
                 <View style={styles.langBadge}>
+                    <Globe size={18} color="#111" />
                     <Text style={styles.langText}>FR</Text>
+                    <ChevronDown size={16} color="#111" />
                 </View>
                 <Text style={styles.logo}>RESERVY</Text>
-                <TouchableOpacity style={styles.profileBtn}>
-                    <User size={20} color="#111" />
+                <TouchableOpacity
+                    style={styles.profileBtn}
+                    onPress={handleProfilePress}>
+                    <User size={18} color="#fff" />
                 </TouchableOpacity>
             </View>
 
@@ -158,39 +175,35 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
+        alignItems: 'center',
         paddingHorizontal: 20,
-        paddingVertical: 12,
+        paddingVertical: 8,
+        backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
     },
     langBadge: {
-        borderWidth: 1,
-        borderColor: '#D1D5DB',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 6,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: 6,
     },
     langText: {
         color: '#111',
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: 14,
+        fontWeight: '700',
     },
     logo: {
+        color: '#111',
         fontSize: 20,
         fontWeight: '900',
-        color: '#111',
-        letterSpacing: 3,
+        letterSpacing: 4,
     },
     profileBtn: {
         width: 36,
         height: 36,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 18,
+        backgroundColor: '#111',
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
