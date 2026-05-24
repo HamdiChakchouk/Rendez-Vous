@@ -107,13 +107,8 @@ export default function NotificationsScreen({ navigation }: any) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
-                    {navigation.canGoBack() ? (
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                            <ArrowLeft size={22} color="#111" />
-                        </TouchableOpacity>
-                    ) : <View style={{ width: 44 }} />}
-                    <Text style={styles.headerTitle}>Notifications</Text>
-                    <View style={{ width: 44 }} />
+                    <Text style={styles.logo}>RESERVY</Text>
+                    <Text style={styles.headerSub}>Notifications</Text>
                 </View>
                 <ActivityIndicator size="large" color="#1152d4" style={{ flex: 1 }} />
             </SafeAreaView>
@@ -122,20 +117,14 @@ export default function NotificationsScreen({ navigation }: any) {
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Header */}
+            {/* Header unifié */}
             <View style={styles.header}>
-                {navigation.canGoBack() ? (
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <ArrowLeft size={22} color="#111" />
-                    </TouchableOpacity>
-                ) : <View style={{ width: 44 }} />}
-                <Text style={styles.headerTitle}>Notifications</Text>
-                {unreadCount > 0 ? (
+                <Text style={styles.logo}>RESERVY</Text>
+                <Text style={styles.headerSub}>Notifications</Text>
+                {unreadCount > 0 && (
                     <TouchableOpacity onPress={markAllAsRead} style={styles.markAllBtn}>
                         <CheckSquare size={20} color="#1152d4" />
                     </TouchableOpacity>
-                ) : (
-                    <View style={{ width: 22 }} />
                 )}
             </View>
 
@@ -205,16 +194,21 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     header: {
-        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingVertical: 14,
+        paddingTop: 16,
+        paddingBottom: 12,
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
+        backgroundColor: '#fff',
     },
+    logo: { fontSize: 20, fontWeight: '900', color: '#111', letterSpacing: 3 },
+    headerSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '600', marginTop: 2 },
     backBtn: {
         padding: 4,
+        position: 'absolute',
+        right: 16,
+        top: 16,
     },
     headerTitle: {
         fontSize: 18,

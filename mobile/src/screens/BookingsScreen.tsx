@@ -72,8 +72,10 @@ export default function BookingsScreen({ navigation }: any) {
 
     return (
         <SafeAreaView style={styles.container}>
+            {/* Header unifié */}
             <View style={styles.header}>
                 <Text style={styles.logo}>RESERVY</Text>
+                <Text style={styles.headerSub}>Mes Rendez-vous</Text>
             </View>
 
             {isLoggedIn === false ? (
@@ -110,10 +112,11 @@ export default function BookingsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F9FAFB' },
-    header: { paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', alignItems: 'center' },
+    container: { flex: 1, backgroundColor: '#fff' },
+    header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', alignItems: 'center' },
     logo: { fontSize: 20, fontWeight: '900', color: '#111', letterSpacing: 3 },
-    pageTitle: { fontSize: 24, fontWeight: '900', color: '#111', marginBottom: 16 },
+    headerSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '600', marginTop: 2 },
+    pageTitle: { fontSize: 22, fontWeight: '900', color: '#111', marginBottom: 16 },
     list: { padding: 20, paddingBottom: 40 },
     card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, elevation: 1, borderWidth: 1, borderColor: '#F3F4F6' },
     cardTop: { flexDirection: 'row', justifyContent: 'space-between' },

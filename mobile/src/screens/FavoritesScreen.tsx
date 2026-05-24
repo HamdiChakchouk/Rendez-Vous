@@ -43,8 +43,10 @@ export default function FavoritesScreen({ navigation }: any) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
-                    <Text style={styles.logo}>RESERVY</Text>
-                </View>
+                <Text style={styles.logo}>RESERVY</Text>
+                <Text style={styles.headerSub}>Mes Favoris</Text>
+            </View>
+
                 <View style={styles.emptyState}>
                     <Heart size={60} color="#E5E7EB" />
                     <Text style={styles.emptyTitle}>Aucun favori</Text>
@@ -65,6 +67,7 @@ export default function FavoritesScreen({ navigation }: any) {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.logo}>RESERVY</Text>
+                <Text style={styles.headerSub}>Mes Favoris</Text>
             </View>
 
             {isLoggedIn === false ? (
@@ -127,10 +130,12 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingHorizontal: 20,
-        paddingVertical: 14,
+        paddingTop: 16,
+        paddingBottom: 12,
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
         alignItems: 'center',
+        backgroundColor: '#fff',
     },
     logo: {
         fontSize: 20,
@@ -138,6 +143,7 @@ const styles = StyleSheet.create({
         color: '#111',
         letterSpacing: 3,
     },
+    headerSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '600', marginTop: 2 },
     pageTitle: {
         fontSize: 24,
         fontWeight: '900',
