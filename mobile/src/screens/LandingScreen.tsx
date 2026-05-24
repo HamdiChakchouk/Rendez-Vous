@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 20,
         paddingVertical: 8,
-        backgroundColor: '#fff',
+        backgroundColor: 'transparent',  // Plus de fond blanc
     },
     langBadge: {
         flexDirection: 'row',
@@ -107,12 +107,12 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     langText: {
-        color: '#111',
+        color: '#fff',           // Blanc sur fond sombre
         fontSize: 14,
         fontWeight: '700',
     },
     logo: {
-        color: '#111',
+        color: '#fff',           // Blanc sur fond sombre
         fontSize: 20,
         fontWeight: '900',
         letterSpacing: 4,
@@ -120,10 +120,12 @@ const styles = StyleSheet.create({
     profileBtn: {
         width: 36,
         height: 36,
-        backgroundColor: '#111',
+        backgroundColor: 'rgba(255,255,255,0.2)',   // Fond semi-transparent au lieu de noir
         borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.3)',
     },
 
     content: {
