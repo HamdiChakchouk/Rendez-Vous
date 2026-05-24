@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
-        paddingVertical: 2,          // Réduit de 8 à 2 pour moins de hauteur
+        paddingVertical: 0,
         backgroundColor: '#fff',
     },
     langBadge: {
