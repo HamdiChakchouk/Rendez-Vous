@@ -35,17 +35,11 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   const navigationRef = useRef<any>(null);
-  const [isNavigationReady, setIsNavigationReady] = React.useState(false);
-  const initialUrlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    // Gérer le deep link de réinitialisation de mot de passe
-    const handleDeepLink = async (url: string | null) => {
-      if (!url) return;
-      // Supabase envoie le token via le fragment (#access_token=...&type=recovery)
-      if (url.includes('type=recovery') || url.includes('reset-password')) {
-        // Extraire le token du fragment
-        const fragment = url.split('#')[1] || url.split('?')[1] || '';
+  const handleSupabaseUrl = async (url: string | null) => {
+    if (!url) return;
+    if (url.includes('type=recovery') || url.includes('reset-password')) {
+      const fragment = url.split('#')[1] || url.split('?')[1] || '';
+      try {
         const params = Object.fromEntries(
           fragment.split('&').map(p => p.split('=').map(decodeURIComponent))
         );
@@ -55,35 +49,35 @@ export default function App() {
             refresh_token: params.refresh_token,
           });
         }
-        
-        // Naviguer vers l'écran de reset
-        if (navigationRef.current?.isReady()) {
-            navigationRef.current.navigate('ResetPassword');
-        } else {
-            // Si la navigation n'est pas prête, on stocke l'URL pour la traiter après
-            initialUrlRef.current = url;
-        }
+      } catch (e) {
+        console.error("Error parsing deep link", e);
       }
-    };
-
-    // Écouter les deep links quand l'app est déjà ouverte
-    const subscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
-
-    // Vérifier si l'app a été ouverte via un deep link
-    Linking.getInitialURL().then(handleDeepLink);
-
-    return () => subscription.remove();
-  }, []);
-
-  useEffect(() => {
-    if (isNavigationReady && initialUrlRef.current) {
-        // Traiter l'URL en attente une fois la navigation prête
-        if (initialUrlRef.current.includes('type=recovery') || initialUrlRef.current.includes('reset-password')) {
-            navigationRef.current?.navigate('ResetPassword');
-        }
-        initialUrlRef.current = null;
     }
-  }, [isNavigationReady]);
+  };
+
+  const linking = {
+    prefixes: ['reservy://', 'exp://'],
+    config: {
+      screens: {
+        ResetPassword: 'reset-password',
+      },
+    },
+    async getInitialURL() {
+      const url = await Linking.getInitialURL();
+      if (url) {
+        await handleSupabaseUrl(url);
+      }
+      return url;
+    },
+    subscribe(listener: (url: string) => void) {
+      const onReceiveURL = ({ url }: { url: string }) => {
+        handleSupabaseUrl(url);
+        listener(url);
+      };
+      const subscription = Linking.addEventListener('url', onReceiveURL);
+      return () => subscription.remove();
+    },
+  };
 
   useEffect(() => {
     // Demander la permission et récupérer le token Push au lancement de l'application
@@ -111,7 +105,7 @@ export default function App() {
       <SafeAreaProvider>
         <NavigationContainer 
           ref={navigationRef}
-          onReady={() => setIsNavigationReady(true)}
+          linking={linking}
         >
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             {/* Main Tab App */}
