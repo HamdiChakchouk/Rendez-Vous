@@ -81,26 +81,39 @@ export default function MainTabNavigator() {
         <Tab.Navigator
             screenOptions={({ route }) => ({
                 headerShown: false,
-                tabBarActiveTintColor: '#1152d4',
+                tabBarActiveTintColor: '#111',
                 tabBarInactiveTintColor: '#9CA3AF',
                 tabBarStyle: {
                     backgroundColor: '#fff',
                     borderTopColor: '#F3F4F6',
-                    paddingTop: 8,
-                    paddingBottom: Math.max(insets.bottom, 8),
-                    height: 60 + Math.max(insets.bottom, 0),
+                    borderTopWidth: 1,
+                    paddingTop: 10,
+                    paddingBottom: Math.max(insets.bottom, 10),
+                    height: 68 + Math.max(insets.bottom, 0),
                 },
                 tabBarLabelStyle: {
                     fontSize: 11,
                     fontWeight: '700',
+                    marginTop: 4,
                 },
-                tabBarIcon: ({ color }) => {
-                    if (route.name === 'Accueil') return <Home size={22} color={color} />;
-                    if (route.name === 'Dashboard') return <LayoutDashboard size={22} color={color} />;
-                    if (route.name === 'RDV') return <Calendar size={22} color={color} />;
-                    if (route.name === 'Absences') return <CalendarOff size={22} color={color} />;
-                    if (route.name === 'Favoris') return <Heart size={22} color={color} />;
-                    if (route.name === 'Notifications') return <Bell size={22} color={color} />;
+                tabBarIcon: ({ color, focused }) => {
+                    const iconWrapperStyle = {
+                        width: 38,
+                        height: 38,
+                        borderRadius: 10,
+                        backgroundColor: focused ? '#111' : '#F3F4F6',
+                        justifyContent: 'center' as const,
+                        alignItems: 'center' as const,
+                        marginBottom: -2,
+                    };
+                    const iconColor = focused ? '#fff' : '#9CA3AF';
+
+                    if (route.name === 'Accueil') return <View style={iconWrapperStyle}><Home size={20} color={iconColor} /></View>;
+                    if (route.name === 'Dashboard') return <View style={iconWrapperStyle}><LayoutDashboard size={20} color={iconColor} /></View>;
+                    if (route.name === 'RDV') return <View style={iconWrapperStyle}><Calendar size={20} color={iconColor} /></View>;
+                    if (route.name === 'Absences') return <View style={iconWrapperStyle}><CalendarOff size={20} color={iconColor} /></View>;
+                    if (route.name === 'Favoris') return <View style={iconWrapperStyle}><Heart size={20} color={iconColor} /></View>;
+                    if (route.name === 'Notifications') return <View style={iconWrapperStyle}><Bell size={20} color={iconColor} /></View>;
                     return null;
                 },
             })}>
