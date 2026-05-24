@@ -118,7 +118,7 @@ export default function App() {
             <Stack.Screen name="MainTabs" component={MainTabNavigator} />
 
             {/* Client Booking Flow */}
-            <Stack.Screen name="Search" component={SearchScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="Search" component={SearchScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="SalonDetail" component={SalonDetailScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="ServicesList" component={ServicesListScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="Booking" component={BookingWizardScreen} options={{ animation: 'slide_from_right' }} />

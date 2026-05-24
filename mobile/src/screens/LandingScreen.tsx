@@ -47,8 +47,8 @@ export default function LandingScreen({ navigation }: any) {
                 return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dy) < 30;
             },
             onPanResponderRelease: (evt, gestureState) => {
-                // Déclencher la navigation si le swipe est assez long (vers la gauche ou la droite)
-                if (Math.abs(gestureState.dx) > 50) {
+                // Déclencher la navigation si le swipe est assez long UNIQUEMENT vers la gauche
+                if (gestureState.dx < -50) {
                     navigation.navigate('Search');
                 }
             }
