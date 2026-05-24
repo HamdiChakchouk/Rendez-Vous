@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Linking } from 'react-native';
+import { supabase } from './src/lib/supabase';
 
 import { registerForPushNotificationsAsync } from './src/lib/pushNotifications';
 import { registerPushToken } from './src/lib/apiService';
@@ -13,6 +14,7 @@ import { registerPushToken } from './src/lib/apiService';
 import MainTabNavigator from './src/navigation/MainTabNavigator';
 import SearchScreen from './src/screens/SearchScreen';
 import AuthScreen from './src/screens/AuthScreen';
+import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import ClientProfileScreen from './src/screens/ClientProfileScreen';
 import SalonDetailScreen from './src/screens/SalonDetailScreen';
 import ServicesListScreen from './src/screens/ServicesListScreen';
@@ -32,6 +34,39 @@ import ProfileScreen from './src/screens/ProfileScreen';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+  const navigationRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Gérer le deep link de réinitialisation de mot de passe
+    const handleDeepLink = async (url: string | null) => {
+      if (!url) return;
+      // Supabase envoie le token via le fragment (#access_token=...&type=recovery)
+      if (url.includes('type=recovery') || url.includes('reset-password')) {
+        // Extraire le token du fragment
+        const fragment = url.split('#')[1] || url.split('?')[1] || '';
+        const params = Object.fromEntries(
+          fragment.split('&').map(p => p.split('=').map(decodeURIComponent))
+        );
+        if (params.access_token && params.refresh_token) {
+          await supabase.auth.setSession({
+            access_token: params.access_token,
+            refresh_token: params.refresh_token,
+          });
+        }
+        // Naviguer vers l'écran de reset
+        navigationRef.current?.navigate('ResetPassword');
+      }
+    };
+
+    // Écouter les deep links quand l'app est déjà ouverte
+    const subscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+
+    // Vérifier si l'app a été ouverte via un deep link
+    Linking.getInitialURL().then(handleDeepLink);
+
+    return () => subscription.remove();
+  }, []);
+
   useEffect(() => {
     // Demander la permission et récupérer le token Push au lancement de l'application
     const setupPushNotifications = async () => {
@@ -49,14 +84,14 @@ export default function App() {
         console.error("Erreur d'initialisation des notifications:", error);
       }
     };
-
+    
     setupPushNotifications();
   }, []);
 
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             {/* Main Tab App */}
             <Stack.Screen name="MainTabs" component={MainTabNavigator} />
@@ -71,6 +106,7 @@ export default function App() {
 
             {/* Auth / Profile */}
             <Stack.Screen name="Auth" component={AuthScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="ClientProfile" component={ClientProfileScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />

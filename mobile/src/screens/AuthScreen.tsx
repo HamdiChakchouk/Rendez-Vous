@@ -53,7 +53,9 @@ export default function AuthScreen({ navigation, route }: any) {
         setLoading(true);
         setError('');
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: 'reservy://reset-password',
+            });
             if (error) throw error;
             Alert.alert('Email envoyé', 'Vérifiez votre boîte de réception pour réinitialiser votre mot de passe.');
         } catch (err: any) {
