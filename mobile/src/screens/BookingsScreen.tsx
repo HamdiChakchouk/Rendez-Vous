@@ -136,9 +136,9 @@ const styles = StyleSheet.create({
     detailBtnText: { color: '#1152d4', fontSize: 13, fontWeight: '700' },
     rebookBtn: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F3F4F6', alignItems: 'center' },
     rebookBtnText: { color: '#111', fontSize: 14, fontWeight: '700' },
-    emptyState: { alignItems: 'center', paddingTop: 60, gap: 12 },
+    emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 12 },
     emptyTitle: { fontSize: 22, fontWeight: '800', color: '#111' },
-    emptySubtitle: { fontSize: 14, color: '#6B7280' },
+    emptySubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
     bookBtn: { backgroundColor: '#111', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, marginTop: 8 },
     bookBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
