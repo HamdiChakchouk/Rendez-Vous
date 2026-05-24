@@ -72,7 +72,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             // 2. Créer le salon
             const { data: salon, error: salonErr } = await supabaseAdmin.from('salons').insert({
                 nom_salon: request.nom_salon,
-                adresse: request.ville || '',
+                adresse: request.adresse || '',
                 telephone: request.telephone || '',
             }).select().single()
             if (salonErr) return err(`Erreur création salon: ${salonErr.message}`, 500)

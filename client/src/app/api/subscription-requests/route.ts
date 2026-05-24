@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
         const { data: { user } } = await supabase.auth.getUser()
         const body = await req.json()
-        const { email, nom_prenom, telephone, nom_salon, ville, type_salon, message } = body
+        const { email, nom_prenom, telephone, nom_salon, adresse, type_salon, message } = body
 
         if (!email || !nom_prenom || !nom_salon) {
             return err('Email, nom et nom du salon sont obligatoires', 400)
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
             nom_prenom,
             telephone: telephone || null,
             nom_salon,
-            ville: ville || null,
+            adresse: adresse || null,
             type_salon: type_salon || 'mixte',
             message: message || null,
             statut: 'pending',

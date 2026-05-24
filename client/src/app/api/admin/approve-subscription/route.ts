@@ -65,7 +65,7 @@ export async function POST(req: Request) {
             .from('salons')
             .insert({
                 nom_salon: subReq.nom_salon,
-                adresse: subReq.ville || 'À renseigner',
+                adresse: subReq.adresse || 'À renseigner',
                 telephone: subReq.telephone || '',
                 horaires_ouverture: defaultHours
             })

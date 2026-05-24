@@ -337,7 +337,7 @@ export default function AdminPage() {
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-slate-400">
                                         <div><span className="text-slate-500 uppercase tracking-wider text-[10px]">Salon</span><br /><span className="text-slate-200 font-semibold">{r.nom_salon}</span></div>
                                         <div><span className="text-slate-500 uppercase tracking-wider text-[10px]">Email</span><br /><span className="text-slate-200 font-semibold">{r.email}</span></div>
-                                        <div><span className="text-slate-500 uppercase tracking-wider text-[10px]">Ville</span><br /><span className="text-slate-200 font-semibold">{r.ville || '—'}</span></div>
+                                        <div><span className="text-slate-500 uppercase tracking-wider text-[10px]">Adresse</span><br /><span className="text-slate-200 font-semibold">{r.adresse || '—'}</span></div>
                                         <div><span className="text-slate-500 uppercase tracking-wider text-[10px]">Type</span><br /><span className="text-slate-200 font-semibold capitalize">{r.type_salon?.replace('_', ' ') || '—'}</span></div>
                                     </div>
                                     {r.message && <p className="mt-3 text-slate-400 text-xs italic border-l-2 border-slate-600 pl-3">"{r.message}"</p>}

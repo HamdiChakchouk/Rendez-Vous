@@ -69,7 +69,7 @@ export default function ProLandingPage() {
     const [error, setError] = useState<string | null>(null)
     const [form, setForm] = useState({
         nom_prenom: '', email: '', telephone: '',
-        nom_salon: '', ville: '', type_salon: 'mixte', message: '',
+        nom_salon: '', adresse: '', type_salon: 'mixte', message: '',
     })
 
     useEffect(() => {
@@ -299,9 +299,9 @@ export default function ProLandingPage() {
                                             className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:ring-1 focus:ring-white/30 focus:outline-none" />
                                     </div>
                                     <div>
-                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Ville</label>
-                                        <input placeholder="Tunis, Sfax..." value={form.ville}
-                                            onChange={e => setForm({ ...form, ville: e.target.value })}
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Adresse complète</label>
+                                        <input placeholder="123 Avenue..." value={form.adresse}
+                                            onChange={e => setForm({ ...form, adresse: e.target.value })}
                                             className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:ring-1 focus:ring-white/30 focus:outline-none" />
                                     </div>
                                 </div>

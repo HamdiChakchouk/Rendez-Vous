@@ -28,7 +28,7 @@ export default function SubscriptionRequestScreen({ navigation, route }: any) {
         email: prefillEmail,
         telephone: '',
         nom_salon: '',
-        ville: '',
+        adresse: '',
         type_salon: 'mixte',
         message: '',
     });
@@ -151,12 +151,12 @@ export default function SubscriptionRequestScreen({ navigation, route }: any) {
                         value={form.nom_salon} onChangeText={v => setForm({ ...form, nom_salon: v })} />
                 </View>
 
-                {/* Ville */}
-                <Text style={s.label}>Ville</Text>
+                {/* Adresse */}
+                <Text style={s.label}>Adresse complète</Text>
                 <View style={s.inputWrap}>
                     <MapPin size={16} color="#9CA3AF" />
-                    <TextInput style={s.input} placeholder="Tunis, Sfax, Sousse..." placeholderTextColor="#9CA3AF"
-                        value={form.ville} onChangeText={v => setForm({ ...form, ville: v })} />
+                    <TextInput style={s.input} placeholder="Ex: 123 Avenue Habib Bourguiba, Tunis" placeholderTextColor="#9CA3AF"
+                        value={form.adresse} onChangeText={v => setForm({ ...form, adresse: v })} />
                 </View>
 
                 {/* Type salon */}

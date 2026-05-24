@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react-native';
+import * as AuthSession from 'expo-auth-session';
 import { supabase } from '../lib/supabase';
 
 export default function AuthScreen({ navigation, route }: any) {
