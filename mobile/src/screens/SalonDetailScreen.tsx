@@ -89,7 +89,7 @@ export default function SalonDetailScreen({ navigation, route }: any) {
                             {services.map((s: any) => (
                                 <TouchableOpacity key={s.id} style={styles.serviceCard}>
                                     <View style={styles.serviceInfo}>
-                                        <Text style={styles.serviceName}>{s.nom}</Text>
+                                        <Text style={styles.serviceName}>{s.nom_service}</Text>
                                         {s.duree_minutes && (
                                             <View style={styles.durationRow}>
                                                 <Clock size={12} color="#9CA3AF" />
