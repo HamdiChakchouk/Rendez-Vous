@@ -40,7 +40,7 @@ export default function LandingScreen({ navigation }: any) {
             <View style={styles.overlay} />
 
             {/* Top Bar */}
-            <SafeAreaView style={styles.topBar}>
+            <SafeAreaView edges={['top']} style={styles.topBar}>
                 <View style={styles.langBadge}>
                     <Globe size={18} color="#111" />
                     <Text style={styles.langText}>FR</Text>
