@@ -4,7 +4,7 @@ import {
     ActivityIndicator, RefreshControl, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, ArrowLeft, Check, CheckSquare } from 'lucide-react-native';
+import { Bell, ArrowLeft, Check, CheckSquare, User } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
 interface Notification {
@@ -20,6 +20,7 @@ export default function NotificationsScreen({ navigation }: any) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
     useEffect(() => {
         loadNotifications();
@@ -29,6 +30,8 @@ export default function NotificationsScreen({ navigation }: any) {
         if (!silent) setLoading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
+            setIsLoggedIn(!!user);
+            
             if (!user) {
                 setLoading(false);
                 return;
@@ -104,11 +107,13 @@ export default function NotificationsScreen({ navigation }: any) {
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <ArrowLeft size={22} color="#111" />
-                    </TouchableOpacity>
+                    {navigation.canGoBack() ? (
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                            <ArrowLeft size={22} color="#111" />
+                        </TouchableOpacity>
+                    ) : <View style={{ width: 44 }} />}
                     <Text style={styles.headerTitle}>Notifications</Text>
-                    <View style={{ width: 22 }} />
+                    <View style={{ width: 44 }} />
                 </View>
                 <ActivityIndicator size="large" color="#1152d4" style={{ flex: 1 }} />
             </SafeAreaView>
@@ -119,9 +124,11 @@ export default function NotificationsScreen({ navigation }: any) {
         <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <ArrowLeft size={22} color="#111" />
-                </TouchableOpacity>
+                {navigation.canGoBack() ? (
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <ArrowLeft size={22} color="#111" />
+                    </TouchableOpacity>
+                ) : <View style={{ width: 44 }} />}
                 <Text style={styles.headerTitle}>Notifications</Text>
                 {unreadCount > 0 ? (
                     <TouchableOpacity onPress={markAllAsRead} style={styles.markAllBtn}>
@@ -133,7 +140,20 @@ export default function NotificationsScreen({ navigation }: any) {
             </View>
 
             {/* List */}
-            {notifications.length === 0 ? (
+            {isLoggedIn === false ? (
+                <View style={styles.emptyState}>
+                    <User size={60} color="#E5E7EB" />
+                    <Text style={styles.emptyTitle}>Vous n'êtes pas connecté</Text>
+                    <Text style={styles.emptySubtitle}>
+                        Connectez-vous pour voir vos notifications.
+                    </Text>
+                    <TouchableOpacity
+                        style={[styles.markAllBtn, { backgroundColor: '#111', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, marginTop: 12 }]}
+                        onPress={() => navigation.navigate('Auth')}>
+                        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Se connecter</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : notifications.length === 0 ? (
                 <View style={styles.emptyState}>
                     <Bell size={60} color="#E5E7EB" />
                     <Text style={styles.emptyTitle}>Aucune notification</Text>

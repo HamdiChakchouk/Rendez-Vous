@@ -9,6 +9,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     Image,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Mail, Phone, Lock, Eye, EyeOff } from 'lucide-react-native';
@@ -37,6 +38,24 @@ export default function AuthScreen({ navigation, route }: any) {
                 if (error) throw error;
                 navigation.navigate('ClientProfile', { email });
             }
+        } catch (err: any) {
+            setError(err.message || 'Une erreur est survenue');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleResetPassword() {
+        if (!email) {
+            setError('Veuillez entrer votre adresse email ci-dessus');
+            return;
+        }
+        setLoading(true);
+        setError('');
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            if (error) throw error;
+            Alert.alert('Email envoyé', 'Vérifiez votre boîte de réception pour réinitialiser votre mot de passe.');
         } catch (err: any) {
             setError(err.message || 'Une erreur est survenue');
         } finally {
@@ -118,7 +137,7 @@ export default function AuthScreen({ navigation, route }: any) {
                         </View>
 
                         {isLogin && (
-                            <TouchableOpacity style={styles.forgotBtn}>
+                            <TouchableOpacity style={styles.forgotBtn} onPress={handleResetPassword}>
                                 <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
                             </TouchableOpacity>
                         )}

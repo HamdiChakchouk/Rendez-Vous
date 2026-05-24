@@ -8,12 +8,10 @@ import {
     ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User } from 'lucide-react-native';
+import { User, Globe, ChevronDown } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
 const { width, height } = Dimensions.get('window');
-
-const HERO_IMAGE = 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=1200&auto=format&fit=crop';
 
 export default function LandingScreen({ navigation }: any) {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -34,7 +32,7 @@ export default function LandingScreen({ navigation }: any) {
 
     return (
         <ImageBackground
-            source={{ uri: HERO_IMAGE }}
+            source={require('../../assets/images/landing-bg.jpg')}
             style={styles.container}
             imageStyle={styles.heroImage}
         >
@@ -44,19 +42,21 @@ export default function LandingScreen({ navigation }: any) {
             {/* Top Bar */}
             <SafeAreaView style={styles.topBar}>
                 <View style={styles.langBadge}>
+                    <Globe size={18} color="#111" />
                     <Text style={styles.langText}>FR</Text>
+                    <ChevronDown size={16} color="#111" />
                 </View>
                 <Text style={styles.logo}>RESERVY</Text>
                 <TouchableOpacity
                     style={styles.profileBtn}
                     onPress={handleProfilePress}>
-                    <User size={20} color="#fff" />
+                    <User size={18} color="#fff" />
                 </TouchableOpacity>
             </SafeAreaView>
 
             {/* Hero Content */}
             <View style={styles.content}>
-                <Text style={styles.title}>Réservez en beauté</Text>
+                <Text style={styles.title}>Réservez votre instant beauté</Text>
                 <Text style={styles.subtitle}>Simple • Immédiat • 24h/24</Text>
 
                 <TouchableOpacity
@@ -74,13 +74,7 @@ export default function LandingScreen({ navigation }: any) {
 
 
 
-            {/* Section subtitle */}
-            <View style={styles.bottomBanner}>
-                <Text style={styles.bottomBannerTitle}>Les meilleurs salons près de chez vous</Text>
-                <Text style={styles.bottomBannerSubtitle}>
-                    Accédez à une sélection exclusive d'établissements de beauté et de bien-être.
-                </Text>
-            </View>
+
         </ImageBackground>
     );
 }
@@ -90,7 +84,6 @@ const styles = StyleSheet.create({
         flex: 1,
         width: width,
         height: height,
-        justifyContent: 'space-between',
     },
     heroImage: {
         resizeMode: 'cover',
@@ -105,38 +98,38 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 20,
-        paddingTop: 8,
+        paddingVertical: 8,
+        backgroundColor: '#fff',
     },
     langBadge: {
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.5)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     langText: {
-        color: '#fff',
-        fontSize: 13,
-        fontWeight: '600',
+        color: '#111',
+        fontSize: 14,
+        fontWeight: '700',
     },
     logo: {
-        color: '#fff',
-        fontSize: 22,
+        color: '#111',
+        fontSize: 20,
         fontWeight: '900',
-        letterSpacing: 3,
+        letterSpacing: 4,
     },
     profileBtn: {
         width: 36,
         height: 36,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        borderRadius: 18,
+        backgroundColor: '#111',
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
 
     content: {
+        flex: 1,
+        justifyContent: 'center',
         paddingHorizontal: 24,
-        paddingBottom: 16,
     },
     title: {
         fontSize: 36,
@@ -144,11 +137,13 @@ const styles = StyleSheet.create({
         color: '#fff',
         letterSpacing: -0.5,
         marginBottom: 8,
+        textAlign: 'center',
     },
     subtitle: {
         fontSize: 15,
         color: 'rgba(255,255,255,0.85)',
         marginBottom: 24,
+        textAlign: 'center',
     },
     primaryBtn: {
         backgroundColor: '#fff',

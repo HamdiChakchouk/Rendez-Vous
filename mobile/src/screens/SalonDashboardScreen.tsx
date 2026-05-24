@@ -5,10 +5,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    Calendar, Plus, CheckCircle, XCircle, ArrowLeft,
+    Calendar, Plus, CheckCircle, XCircle, LogOut,
     Settings, CalendarOff, Clock, User, Phone, ChevronRight,
     TrendingUp, RefreshCw,
 } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../lib/supabase';
 
 const STATUT_COLORS: Record<string, string> = {
@@ -42,10 +43,12 @@ export default function SalonDashboardScreen({ navigation }: any) {
     const [stats, setStats] = useState({ rdv: 0, ca: 0 });
     const [showAddModal, setShowAddModal] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [newApt, setNewApt] = useState({ nom_client: '', telephone: '', service_id: '', employe_id: '', heure_rdv: '' });
+    const [newApt, setNewApt] = useState({ nom_client: '', telephone: '', service_id: '', employe_id: '', date: new Date() });
+    const [showPicker, setShowPicker] = useState<'date' | 'time' | null>(null);
+    const [filterEmployeId, setFilterEmployeId] = useState<string | null>(null);
     const [period, setPeriod] = useState<'today' | 'tomorrow' | 'week' | 'month'>('today');
 
-    useEffect(() => { loadData(); }, [period]);
+    useEffect(() => { loadData(); }, [period, filterEmployeId]);
 
     async function loadData(silent = false) {
         if (!silent) setLoading(true);
@@ -118,6 +121,8 @@ export default function SalonDashboardScreen({ navigation }: any) {
             // Le coiffeur ne voit que ses propres RDV
             if (role === 'coiffeur' && linkedEmployeId) {
                 aptsQuery = aptsQuery.eq('employe_id', linkedEmployeId);
+            } else if (role !== 'coiffeur' && filterEmployeId) {
+                aptsQuery = aptsQuery.eq('employe_id', filterEmployeId);
             }
 
             const { data: apts } = await aptsQuery;
@@ -152,8 +157,19 @@ export default function SalonDashboardScreen({ navigation }: any) {
         ]);
     }
 
+    const handleLogout = async () => {
+        Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
+            { text: 'Non', style: 'cancel' },
+            {
+                text: 'Oui', style: 'destructive', onPress: async () => {
+                    await supabase.auth.signOut();
+                }
+            }
+        ]);
+    };
+
     async function handleAddApt() {
-        if (!salonId || !newApt.nom_client || !newApt.telephone || !newApt.service_id || !newApt.heure_rdv) {
+        if (!salonId || !newApt.nom_client || !newApt.telephone || !newApt.service_id) {
             Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires'); return;
         }
         setSaving(true);
@@ -169,16 +185,26 @@ export default function SalonDashboardScreen({ navigation }: any) {
                 clientId = newClient.id;
             }
 
-            const today = new Date().toISOString().split('T')[0];
+            const Y = newApt.date.getFullYear();
+            const M = (newApt.date.getMonth() + 1).toString().padStart(2, '0');
+            const D = newApt.date.getDate().toString().padStart(2, '0');
+            const dateStr = `${Y}-${M}-${D}`;
+            
+            const h = newApt.date.getHours().toString().padStart(2, '0');
+            const m = newApt.date.getMinutes().toString().padStart(2, '0');
+            const timeStr = `${h}:${m}:00`;
+
+            const targetEmployeId = userRole === 'coiffeur' ? employeId : (newApt.employe_id || null);
+
             const { error } = await supabase.from('rendez_vous').insert({
                 salon_id: salonId, client_id: clientId,
-                service_id: newApt.service_id, employe_id: newApt.employe_id || null,
-                date_rdv: today, heure_rdv: `${newApt.heure_rdv}:00`, statut: 'confirmed',
+                service_id: newApt.service_id, employe_id: targetEmployeId,
+                date_rdv: dateStr, heure_rdv: timeStr, statut: 'confirmed',
             });
             if (error) throw error;
 
             setShowAddModal(false);
-            setNewApt({ nom_client: '', telephone: '', service_id: '', employe_id: '', heure_rdv: '' });
+            setNewApt({ nom_client: '', telephone: '', service_id: '', employe_id: '', date: new Date() });
             loadData(true);
         } catch (e: any) {
             Alert.alert('Erreur', e.message || 'Impossible d\'ajouter le RDV');
@@ -195,28 +221,15 @@ export default function SalonDashboardScreen({ navigation }: any) {
         <SafeAreaView style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <ArrowLeft size={22} color="#111" />
-                </TouchableOpacity>
-                <View style={{ flex: 1, marginLeft: 14 }}>
+                <View style={{ flex: 1 }}>
                     <Text style={styles.salonName}>{salonName}</Text>
                     <Text style={styles.headerSub}>
                         {userRole === 'coiffeur' ? 'Espace Collaborateur' : (userRole === 'manager' || userRole === 'super_admin') ? 'Dashboard Manager' : ''}
                     </Text>
                 </View>
-                {(userRole === 'manager' || userRole === 'super_admin') && (
-                    <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonConfig')}>
-                        <Settings size={20} color="#374151" />
-                    </TouchableOpacity>
-                )}
-                <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonAbsences')}>
-                    <CalendarOff size={20} color="#374151" />
+                <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Profile')}>
+                    <User size={22} color="#111" />
                 </TouchableOpacity>
-                {(userRole === 'manager' || userRole === 'super_admin') && (
-                    <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('SalonSettings')}>
-                        <User size={20} color="#374151" />
-                    </TouchableOpacity>
-                )}
             </View>
 
             {/* Stats Row — managers uniquement */}
@@ -251,6 +264,33 @@ export default function SalonDashboardScreen({ navigation }: any) {
                     ))}
                 </ScrollView>
             </View>
+
+            {/* Employee Filters (Manager/Admin only) */}
+            {userRole !== 'coiffeur' && employees.length > 0 && (
+                <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                        <TouchableOpacity 
+                            onPress={() => setFilterEmployeId(null)}
+                            style={[styles.periodChip, filterEmployeId === null && styles.periodChipActive]}
+                        >
+                            <Text style={[styles.periodChipText, filterEmployeId === null && styles.periodChipTextActive]}>
+                                Tous les coiffeurs
+                            </Text>
+                        </TouchableOpacity>
+                        {employees.map(emp => (
+                            <TouchableOpacity 
+                                key={emp.id} 
+                                onPress={() => setFilterEmployeId(emp.id)}
+                                style={[styles.periodChip, filterEmployeId === emp.id && styles.periodChipActive]}
+                            >
+                                <Text style={[styles.periodChipText, filterEmployeId === emp.id && styles.periodChipTextActive]}>
+                                    {emp.nom_employe}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
 
             {/* Appointments */}
             <View style={styles.sectionHeader}>
@@ -345,22 +385,50 @@ export default function SalonDashboardScreen({ navigation }: any) {
                             ))}
                         </ScrollView>
 
-                        <Text style={styles.fieldLabel}>Employé (optionnel)</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                            <TouchableOpacity onPress={() => setNewApt({ ...newApt, employe_id: '' })}
-                                style={[styles.chip, !newApt.employe_id && styles.chipActive]}>
-                                <Text style={[styles.chipText, !newApt.employe_id && { color: '#fff' }]}>N'importe qui</Text>
-                            </TouchableOpacity>
-                            {employees.map(e => (
-                                <TouchableOpacity key={e.id} onPress={() => setNewApt({ ...newApt, employe_id: e.id })}
-                                    style={[styles.chip, newApt.employe_id === e.id && styles.chipActive]}>
-                                    <Text style={[styles.chipText, newApt.employe_id === e.id && { color: '#fff' }]}>{e.nom_employe}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
+                        {userRole !== 'coiffeur' && (
+                            <>
+                                <Text style={styles.fieldLabel}>Employé (optionnel)</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                                    <TouchableOpacity onPress={() => setNewApt({ ...newApt, employe_id: '' })}
+                                        style={[styles.chip, !newApt.employe_id && styles.chipActive]}>
+                                        <Text style={[styles.chipText, !newApt.employe_id && { color: '#fff' }]}>N'importe qui</Text>
+                                    </TouchableOpacity>
+                                    {employees.map(e => (
+                                        <TouchableOpacity key={e.id} onPress={() => setNewApt({ ...newApt, employe_id: e.id })}
+                                            style={[styles.chip, newApt.employe_id === e.id && styles.chipActive]}>
+                                            <Text style={[styles.chipText, newApt.employe_id === e.id && { color: '#fff' }]}>{e.nom_employe}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </>
+                        )}
 
-                        <Text style={styles.fieldLabel}>Heure * (ex: 09:30)</Text>
-                        <TextInput style={styles.input} placeholder="HH:MM" value={newApt.heure_rdv} onChangeText={v => setNewApt({ ...newApt, heure_rdv: v })} keyboardType="numbers-and-punctuation" maxLength={5} />
+                        <Text style={styles.fieldLabel}>Date et Heure du rendez-vous *</Text>
+                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                            <TouchableOpacity style={[styles.input, { flex: 1, alignItems: 'center' }]} onPress={() => setShowPicker('date')}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#111' }}>
+                                    {newApt.date.toLocaleDateString('fr-FR')}
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.input, { flex: 1, alignItems: 'center' }]} onPress={() => setShowPicker('time')}>
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#111' }}>
+                                    {newApt.date.getHours().toString().padStart(2, '0')}:{newApt.date.getMinutes().toString().padStart(2, '0')}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        
+                        {showPicker && (
+                            <DateTimePicker
+                                value={newApt.date}
+                                mode={showPicker}
+                                is24Hour={true}
+                                display="default"
+                                onChange={(event, selectedDate) => {
+                                    setShowPicker(null);
+                                    if (selectedDate) setNewApt({ ...newApt, date: selectedDate });
+                                }}
+                            />
+                        )}
 
                         <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleAddApt} disabled={saving}>
                             {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Bloquer le créneau</Text>}

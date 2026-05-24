@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar, Clock, CheckCircle, XCircle, ChevronRight } from 'lucide-react-native';
+import { Calendar, Clock, CheckCircle, XCircle, ChevronRight, User } from 'lucide-react-native';
+import { supabase } from '../lib/supabase';
 
 const MOCK_BOOKINGS = [
     { id: '1', salon: 'Élégance de Carthage', service: 'Coupe + Soin', date: '10 Mar 2026', heure: '14:30', statut: 'confirme', prix: '55 TND' },
@@ -17,6 +18,18 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 };
 
 export default function BookingsScreen({ navigation }: any) {
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setIsLoggedIn(!!user);
+        });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setIsLoggedIn(!!session?.user);
+        });
+        return () => subscription.unsubscribe();
+    }, []);
+
     const renderBooking = ({ item }: { item: typeof MOCK_BOOKINGS[0] }) => {
         const cfg = STATUS_CONFIG[item.statut] || STATUS_CONFIG.en_attente;
         return (
@@ -62,7 +75,20 @@ export default function BookingsScreen({ navigation }: any) {
             <View style={styles.header}>
                 <Text style={styles.logo}>RESERVY</Text>
             </View>
-            <FlatList
+
+            {isLoggedIn === false ? (
+                <View style={styles.emptyState}>
+                    <User size={60} color="#E5E7EB" />
+                    <Text style={styles.emptyTitle}>Vous n'êtes pas connecté</Text>
+                    <Text style={[styles.emptySubtitle, { textAlign: 'center', marginBottom: 12, paddingHorizontal: 20 }]}>
+                        Connectez-vous pour voir et gérer vos rendez-vous.
+                    </Text>
+                    <TouchableOpacity style={styles.bookBtn} onPress={() => navigation.navigate('Auth')}>
+                        <Text style={styles.bookBtnText}>Se connecter</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <FlatList
                 data={MOCK_BOOKINGS}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.list}
@@ -78,6 +104,7 @@ export default function BookingsScreen({ navigation }: any) {
                     </View>
                 }
             />
+            )}
         </SafeAreaView>
     );
 }
@@ -108,6 +135,7 @@ const styles = StyleSheet.create({
     rebookBtnText: { color: '#111', fontSize: 14, fontWeight: '700' },
     emptyState: { alignItems: 'center', paddingTop: 60, gap: 12 },
     emptyTitle: { fontSize: 22, fontWeight: '800', color: '#111' },
+    emptySubtitle: { fontSize: 14, color: '#6B7280' },
     bookBtn: { backgroundColor: '#111', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, marginTop: 8 },
     bookBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

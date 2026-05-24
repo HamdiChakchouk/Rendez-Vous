@@ -4,7 +4,7 @@ import {
     Modal, TextInput, ActivityIndicator, Alert, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Plus, Trash2, Save, Scissors, Clock, X, Info, Globe, MapPin, Instagram, Facebook, CheckCircle, XCircle } from 'lucide-react-native';
+import { ArrowLeft, Plus, Trash2, Save, Scissors, Clock, X, Info, Globe, Instagram, Facebook, CheckCircle, XCircle, Users, ChevronRight } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
 const DAYS: Record<string, string> = {
@@ -209,23 +209,6 @@ export default function SalonConfigScreen({ navigation }: any) {
                     </View>
                 </View>
 
-                {/* ── Zones Desservies ──────────────────────── */}
-                <View style={s.section}>
-                    <View style={s.secHead}>
-                        <MapPin size={15} color="#1152d4" />
-                        <Text style={s.secTitle}>Zones Desservies</Text>
-                    </View>
-                    <View style={s.chipWrap}>
-                        {QUARTIERS.map(area => (
-                            <TouchableOpacity key={area} onPress={() => toggleQuartier(area)} style={[s.chip, form.service_area.includes(area) && s.chipOn]}>
-                                <Text style={[s.chipTxt, form.service_area.includes(area) && { color: '#fff' }]}>{area}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                    <Text style={[s.label, { marginTop: 12 }]}>Autre quartier</Text>
-                    <TextInput style={s.input} placeholder="Saisir un autre quartier..." value={form.other_area} onChangeText={v => setForm({ ...form, other_area: v })} />
-                </View>
-
                  {/* ── Horaires d'ouverture ──────────────────────── */}
                  <View style={s.section}>
                     <View style={s.secHead}>
@@ -266,6 +249,21 @@ export default function SalonConfigScreen({ navigation }: any) {
                         </View>
                     ))}
                 </View>
+
+                {/* ── Bouton Gestion de l'Équipe ──────────────── */}
+                <TouchableOpacity 
+                    style={[s.section, { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderColor: '#E5E7EB' }]}
+                    onPress={() => navigation.navigate('SalonSettings')}
+                >
+                    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#D1FAE5', alignItems: 'center', justifyContent: 'center' }}>
+                        <Users size={20} color="#10B981" />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={{ fontSize: 15, fontWeight: '800', color: '#111' }}>Gestion de l'Équipe</Text>
+                        <Text style={{ fontSize: 12, color: '#6B7280' }}>Gérer les coiffeurs et leurs horaires</Text>
+                    </View>
+                    <ChevronRight size={20} color="#9CA3AF" />
+                </TouchableOpacity>
             </ScrollView>
 
             {/* Modal Service */}

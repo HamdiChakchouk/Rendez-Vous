@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Heart, MapPin } from 'lucide-react-native';
+import { Heart, MapPin, User } from 'lucide-react-native';
+import { supabase } from '../lib/supabase';
 
 const MOCK_FAVORITES = [
     {
@@ -22,6 +23,17 @@ const MOCK_FAVORITES = [
 
 export default function FavoritesScreen({ navigation }: any) {
     const [favorites, setFavorites] = useState(MOCK_FAVORITES);
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data: { user } }) => {
+            setIsLoggedIn(!!user);
+        });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setIsLoggedIn(!!session?.user);
+        });
+        return () => subscription.unsubscribe();
+    }, []);
 
     const removeFavorite = (id: string) => {
         setFavorites(prev => prev.filter(f => f.id !== id));
@@ -55,10 +67,25 @@ export default function FavoritesScreen({ navigation }: any) {
                 <Text style={styles.logo}>RESERVY</Text>
             </View>
 
-            <Text style={styles.pageTitle}>Mes Favoris</Text>
-            <Text style={styles.pageSubtitle}>{favorites.length} salon(s) enregistré(s)</Text>
+            {isLoggedIn === false ? (
+                <View style={styles.emptyState}>
+                    <User size={60} color="#E5E7EB" />
+                    <Text style={styles.emptyTitle}>Vous n'êtes pas connecté</Text>
+                    <Text style={styles.emptySubtitle}>
+                        Connectez-vous pour voir et gérer vos salons favoris.
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.exploreBtn}
+                        onPress={() => navigation.navigate('Auth')}>
+                        <Text style={styles.exploreBtnText}>Se connecter</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <>
+                    <Text style={styles.pageTitle}>Mes Favoris</Text>
+                    <Text style={styles.pageSubtitle}>{favorites.length} salon(s) enregistré(s)</Text>
 
-            <FlatList
+                    <FlatList
                 data={favorites}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.list}
@@ -87,6 +114,8 @@ export default function FavoritesScreen({ navigation }: any) {
                     </TouchableOpacity>
                 )}
             />
+                </>
+            )}
         </SafeAreaView>
     );
 }

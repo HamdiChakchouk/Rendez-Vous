@@ -27,6 +27,7 @@ import ProLandingScreen from './src/screens/ProLandingScreen';
 import SubscriptionRequestScreen from './src/screens/SubscriptionRequestScreen';
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -70,6 +71,7 @@ export default function App() {
 
             {/* Auth / Profile */}
             <Stack.Screen name="Auth" component={AuthScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="ClientProfile" component={ClientProfileScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
 

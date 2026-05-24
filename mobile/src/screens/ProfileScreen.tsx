@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     User, Settings, Bell, HelpCircle, LogOut,
     ChevronRight, Shield, LayoutDashboard, CalendarOff,
-    Store, Users
+    Store, Users, KeyRound, Trash2
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
@@ -12,7 +12,7 @@ type Role = 'super_admin' | 'manager' | 'coiffeur' | 'client' | null;
 
 const ROLE_LABELS: Record<string, string> = {
     super_admin: '⭐ Super Admin',
-    manager: '🏪 Manager',
+    manager: '✨ Manager',
     coiffeur: '✂️ Coiffeur',
     client: '👤 Client',
 };
@@ -74,24 +74,46 @@ export default function ProfileScreen({ navigation }: any) {
         );
     }
 
+    async function handleChangePassword() {
+        Alert.alert('Changer le mot de passe', 'Un lien de réinitialisation va être envoyé à votre adresse email.', [
+            { text: 'Annuler', style: 'cancel' },
+            {
+                text: 'Envoyer',
+                onPress: async () => {
+                    if (!userEmail) return;
+                    const { error } = await supabase.auth.resetPasswordForEmail(userEmail);
+                    if (error) {
+                        Alert.alert('Erreur', error.message);
+                    } else {
+                        Alert.alert('Succès', 'Veuillez vérifier votre boîte de réception pour changer votre mot de passe.');
+                    }
+                }
+            }
+        ]);
+    }
+
+    async function handleDeleteAccount() {
+        Alert.alert('Supprimer mon compte', 'Êtes-vous sûr ? Cette action est irréversible et supprimera toutes vos données.', [
+            { text: 'Annuler', style: 'cancel' },
+            {
+                text: 'Supprimer',
+                style: 'destructive',
+                onPress: async () => {
+                    Alert.alert(
+                        'Information de sécurité',
+                        'Pour des raisons de sécurité, veuillez envoyer un email au support pour procéder à la suppression définitive de votre compte et de vos données.',
+                        [
+                            { text: 'Contacter le support', onPress: () => Linking.openURL('mailto:reservy.tn@gmail.com') },
+                            { text: 'Fermer', style: 'cancel' }
+                        ]
+                    );
+                }
+            }
+        ]);
+    }
+
     // ── Menu items based on role ──────────────────────────────
     const menuItems = [
-        {
-            icon: User,
-            label: 'Personnaliser le profil',
-            color: '#111',
-            bg: '#F3F4F6',
-            onPress: () => navigation.navigate('ClientProfile'),
-            always: true,
-        },
-        {
-            icon: LayoutDashboard,
-            label: 'Espace Salon',
-            color: '#1152d4',
-            bg: '#EEF2FF',
-            onPress: () => navigation.navigate('SalonDashboard'),
-            roles: ['manager', 'coiffeur'],
-        },
         {
             icon: Shield,
             label: 'Administration',
@@ -100,22 +122,7 @@ export default function ProfileScreen({ navigation }: any) {
             onPress: () => navigation.navigate('AdminDashboard'),
             roles: ['super_admin'],
         },
-        {
-            icon: CalendarOff,
-            label: role === 'coiffeur' ? 'Mes Absences' : 'Gestion des Absences',
-            color: '#D97706',
-            bg: '#FEF3C7',
-            onPress: () => navigation.navigate('SalonAbsences'),
-            roles: ['manager', 'coiffeur'],
-        },
-        {
-            icon: Users,
-            label: "Gestion de l'Équipe",
-            color: '#10B981',
-            bg: '#D1FAE5',
-            onPress: () => navigation.navigate('SalonSettings'),
-            roles: ['manager'],
-        },
+
         {
             icon: Store,
             label: 'Paramètres du Salon',
@@ -124,14 +131,7 @@ export default function ProfileScreen({ navigation }: any) {
             onPress: () => navigation.navigate('SalonConfig'),
             roles: ['manager'],
         },
-        {
-            icon: Bell,
-            label: 'Notifications',
-            color: '#374151',
-            bg: '#F3F4F6',
-            onPress: () => navigation.navigate('Notifications'),
-            always: true,
-        },
+
         {
             icon: HelpCircle,
             label: 'Aide & Support',
@@ -141,11 +141,19 @@ export default function ProfileScreen({ navigation }: any) {
             always: true,
         },
         {
-            icon: Settings,
-            label: 'Paramètres',
+            icon: KeyRound,
+            label: 'Changer mon mot de passe',
             color: '#374151',
             bg: '#F3F4F6',
-            onPress: () => Alert.alert('Bientôt disponible', ''),
+            onPress: handleChangePassword,
+            always: true,
+        },
+        {
+            icon: Trash2,
+            label: 'Supprimer mon compte',
+            color: '#EF4444',
+            bg: '#FEF2F2',
+            onPress: handleDeleteAccount,
             always: true,
         },
     ].filter(item => item.always || (item.roles && role && item.roles.includes(role)));
