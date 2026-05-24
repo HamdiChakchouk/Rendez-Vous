@@ -8,24 +8,19 @@ import {
     TouchableOpacity,
     Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, MapPin, Phone, Star, Clock, Heart, ChevronRight } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
 const { width } = Dimensions.get('window');
 
-const DAYS_FR: Record<string, string> = {
-    monday: 'Lun',
-    tuesday: 'Mar',
-    wednesday: 'Mer',
-    thursday: 'Jeu',
-    friday: 'Ven',
-    saturday: 'Sam',
-    sunday: 'Dim',
+    monday: 'Lundi', tuesday: 'Mardi', wednesday: 'Mercredi', thursday: 'Jeudi', friday: 'Vendredi', saturday: 'Samedi', sunday: 'Dimanche',
+    lundi: 'Lundi', mardi: 'Mardi', mercredi: 'Mercredi', jeudi: 'Jeudi', vendredi: 'Vendredi', samedi: 'Samedi', dimanche: 'Dimanche',
 };
 
 export default function SalonDetailScreen({ navigation, route }: any) {
     const { salon } = route.params;
+    const insets = useSafeAreaInsets();
     const [services, setServices] = useState<any[]>([]);
     const [isFav, setIsFav] = useState(false);
 
@@ -120,9 +115,9 @@ export default function SalonDetailScreen({ navigation, route }: any) {
                                     <View key={day} style={styles.horaireRow}>
                                         <Text style={styles.horaireDay}>{DAYS_FR[day] || day}</Text>
                                         <Text style={styles.horaireTime}>
-                                            {h.isOpen === false || h.open === 'closed'
+                                            {h.ouvert === false || h.isOpen === false || h.open === 'closed' || h.ouverture === 'closed'
                                                 ? 'Fermé'
-                                                : `${h.open} – ${h.close_pm || h.close}`}
+                                                : `${h.ouverture || h.open} – ${h.fermeture || h.close_pm || h.close}`}
                                         </Text>
                                     </View>
                                 ))}
@@ -133,7 +128,7 @@ export default function SalonDetailScreen({ navigation, route }: any) {
             </ScrollView>
 
             {/* CTA bottom */}
-            <View style={styles.bottomBar}>
+            <View style={[styles.bottomBar, { paddingBottom: insets.bottom > 0 ? insets.bottom + 8 : 16 }]}>
                 <TouchableOpacity
                     style={styles.bookBtn}
                     onPress={() => navigation.navigate('ServicesList', { salonId: salon.id, salonName: salon.nom_salon })}>
@@ -187,7 +182,7 @@ const styles = StyleSheet.create({
     ratingText: { fontSize: 13, fontWeight: '700', color: '#111' },
 
     // Content
-    content: { padding: 20, paddingBottom: 100 },
+    content: { padding: 20, paddingBottom: 130 },
     salonName: { fontSize: 26, fontWeight: '900', color: '#111', marginBottom: 10 },
     infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
     infoText: { fontSize: 14, color: '#6B7280', flex: 1 },
@@ -215,7 +210,7 @@ const styles = StyleSheet.create({
     // Horaires
     horaireGrid: { gap: 8 },
     horaireRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    horaireDay: { fontSize: 14, fontWeight: '700', color: '#374151', width: 42 },
+    horaireDay: { fontSize: 14, fontWeight: '700', color: '#374151', width: 90 },
     horaireTime: { fontSize: 14, color: '#6B7280' },
 
     // CTA Bottom
