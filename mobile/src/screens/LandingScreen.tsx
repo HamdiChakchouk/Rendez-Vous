@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -6,21 +6,54 @@ import {
     TouchableOpacity,
     Dimensions,
     ImageBackground,
+    PanResponder,
+    Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Globe, ChevronDown } from 'lucide-react-native';
+import { User, Globe, ChevronDown, ChevronsLeft } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LandingScreen({ navigation }: any) {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const translateX = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
             setIsLoggedIn(!!user);
         });
-    }, []);
+
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(translateX, {
+                    toValue: -15,
+                    duration: 800,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(translateX, {
+                    toValue: 0,
+                    duration: 800,
+                    useNativeDriver: true,
+                })
+            ])
+        ).start();
+    }, [translateX]);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onMoveShouldSetPanResponder: (evt, gestureState) => {
+                // Détecter uniquement les swipes horizontaux clairs
+                return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dy) < 30;
+            },
+            onPanResponderRelease: (evt, gestureState) => {
+                // Déclencher la navigation si le swipe est assez long (vers la gauche ou la droite)
+                if (Math.abs(gestureState.dx) > 50) {
+                    navigation.navigate('Search');
+                }
+            }
+        })
+    ).current;
 
     function handleProfilePress() {
         if (isLoggedIn) {
@@ -31,11 +64,12 @@ export default function LandingScreen({ navigation }: any) {
     }
 
     return (
-        <ImageBackground
-            source={require('../../assets/images/landing-bg.jpg')}
-            style={styles.container}
-            imageStyle={styles.heroImage}
-        >
+        <View style={styles.container} {...panResponder.panHandlers}>
+            <ImageBackground
+                source={require('../../assets/images/landing-bg.jpg')}
+                style={styles.container}
+                imageStyle={styles.heroImage}
+            >
             {/* Dark overlay */}
             <View style={styles.overlay} />
 
@@ -70,12 +104,18 @@ export default function LandingScreen({ navigation }: any) {
                     onPress={() => navigation.navigate('ProLanding')}>
                     <Text style={styles.secondaryBtnText}>Je suis un professionnel de beauté</Text>
                 </TouchableOpacity>
+
+                {/* Indicateur de swipe */}
+                <View style={styles.swipeIndicatorContainer}>
+                    <Animated.View style={{ transform: [{ translateX }] }}>
+                        <ChevronsLeft size={22} color="rgba(255,255,255,0.7)" />
+                    </Animated.View>
+                    <Text style={styles.swipeText}>Glissez pour réserver</Text>
+                </View>
             </View>
 
-
-
-
         </ImageBackground>
+        </View>
     );
 }
 
@@ -170,9 +210,19 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
     },
-
-
-    bottomBanner: {
+    swipeIndicatorContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 40,
+        gap: 6,
+    },
+    swipeText: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 14,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+    },    bottomBanner: {
         backgroundColor: '#fff',
         paddingVertical: 20,
         paddingHorizontal: 24,
