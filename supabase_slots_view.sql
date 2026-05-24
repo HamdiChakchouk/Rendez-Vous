@@ -9,8 +9,11 @@
 -- Supprimer si elle existe déjà (pour re-exécuter proprement)
 DROP VIEW IF EXISTS public.public_booked_slots;
 
--- Créer la vue qui joint rendez_vous + services pour avoir la durée
-CREATE VIEW public.public_booked_slots AS
+-- Créer la vue avec SECURITY INVOKER (la vue respecte les droits de l'utilisateur appelant,
+-- pas ceux du créateur — corrige l'alerte Supabase "security_definer_view")
+CREATE OR REPLACE VIEW public.public_booked_slots
+WITH (security_invoker = true)
+AS
 SELECT
     rv.id,
     rv.salon_id,
