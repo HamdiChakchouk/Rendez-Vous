@@ -21,8 +21,9 @@ LocaleConfig.locales['fr'] = {
 };
 LocaleConfig.defaultLocale = 'fr';
 
-const TIME_SLOTS = ['09:00', '10:00', '11:30', '14:00', '15:30', '17:00'];
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+const SLOT_STEP = 15; // Pas de 15 minutes pour coller au maximum au planning
+
 
 function todayStr() {
     return new Date().toISOString().split('T')[0];
@@ -46,6 +47,10 @@ export default function BookingWizardScreen({ navigation, route }: any) {
 
     const [session, setSession] = useState<any>(null);
     const [verifiedPhone, setVerifiedPhone] = useState<string | null>(null);
+    // Créneaux déjà réservés pour la date sélectionnée
+    const [bookedSlots, setBookedSlots] = useState<{ employe_id: string; heure_rdv: string; duree_minutes: number }[]>([]);
+    const [loadingSlots, setLoadingSlots] = useState(false);
+
 
     useEffect(() => {
         supabase.from('employes').select('*').eq('salon_id', salon.id).then(({ data }) => {
@@ -71,6 +76,26 @@ export default function BookingWizardScreen({ navigation, route }: any) {
             authListener.data.subscription.unsubscribe();
         };
     }, []);
+
+    // ── Charger les créneaux réservés quand la date ou le coiffeur change ──
+    useEffect(() => {
+        if (!selectedDate) return;
+        setLoadingSlots(true);
+        setSelectedTime('');
+
+        const query = supabase
+            .from('public_booked_slots')
+            .select('employe_id, heure_rdv, duree_minutes')
+            .eq('salon_id', salon.id)
+            .eq('date_rdv', selectedDate);
+
+        query.then(({ data }) => {
+            setBookedSlots(data || []);
+            setLoadingSlots(false);
+        });
+    }, [selectedDate, selectedEmployee]);
+
+
 
     // ── Build disabled dates map for the calendar ────────────────
     const disabledDates = useMemo(() => {
@@ -112,25 +137,65 @@ export default function BookingWizardScreen({ navigation, route }: any) {
         setSelectedDate(dateStr);
     }
 
+    // ── Moteur de créneaux intelligents (pas de 15 min + gestion durée) ──
     function getAvailableSlots(): string[] {
         if (!selectedDate) return [];
         const d = new Date(selectedDate);
         const dayName = DAYS[d.getDay()];
         const h = openingHours[dayName];
+        if (!h || h.isOpen === false || h.open === 'closed') return [];
+
+        const serviceDuration = service.duree_minutes || 30;
         const now = new Date();
         const today = todayStr();
-        return TIME_SLOTS.filter(time => {
-            if (h && h.open && h.close) {
-                if (time < h.open || time > (h.close_pm || h.close)) return false;
-            }
+
+        // Convertit "HH:MM" en minutes depuis minuit
+        const toMin = (t: string) => {
+            const [hh, mm] = t.split(':').map(Number);
+            return hh * 60 + mm;
+        };
+        // Convertit minutes depuis minuit en "HH:MM"
+        const toStr = (m: number) => {
+            const hh = Math.floor(m / 60).toString().padStart(2, '0');
+            const mm = (m % 60).toString().padStart(2, '0');
+            return `${hh}:${mm}`;
+        };
+
+        const openMin = toMin(h.open || '09:00');
+        // Supporte la fermeture via "close_pm" (après pause midi) ou "close"
+        const closeMin = toMin(h.close_pm || h.close || '19:00');
+
+        // Récupérer les blocs occupés pour le coiffeur sélectionné
+        const occupiedBlocks = bookedSlots
+            .filter(b => !selectedEmployee || selectedEmployee === 'any' || b.employe_id === selectedEmployee)
+            .map(b => ({
+                start: toMin(b.heure_rdv.substring(0, 5)),  // "09:00:00" → "09:00"
+                end: toMin(b.heure_rdv.substring(0, 5)) + b.duree_minutes,
+            }));
+
+        const result: string[] = [];
+        // On balaye toute la journée par pas de 15 min
+        for (let t = openMin; t + serviceDuration <= closeMin; t += SLOT_STEP) {
+            const slotEnd = t + serviceDuration;
+
+            // Vérifier que ce créneau ne chevauche aucun bloc occupé
+            const hasConflict = occupiedBlocks.some(
+                block => t < block.end && slotEnd > block.start
+            );
+            if (hasConflict) continue;
+
+            // Si on est aujourd'hui, ignorer les créneaux passés
             if (selectedDate === today) {
-                const [hr, min] = time.split(':').map(Number);
-                const slot = new Date(); slot.setHours(hr, min, 0, 0);
-                return slot > now;
+                const slotTime = new Date();
+                slotTime.setHours(Math.floor(t / 60), t % 60, 0, 0);
+                if (slotTime <= now) continue;
             }
-            return true;
-        });
+
+            result.push(toStr(t));
+        }
+        return result;
     }
+
 
     async function handleSSOLogin(provider: 'google' | 'facebook') {
         setIsLoading(true);
@@ -316,19 +381,24 @@ export default function BookingWizardScreen({ navigation, route }: any) {
                                     <Clock size={18} color="#1152d4" />
                                     <Text style={styles.stepTitle}>Créneaux disponibles</Text>
                                 </View>
-                                <View style={styles.slotsGrid}>
-                                    {slots.length === 0
-                                        ? <Text style={styles.noSlots}>Aucun créneau disponible pour cette journée.</Text>
-                                        : slots.map(time => (
-                                            <TouchableOpacity
-                                                key={time}
-                                                style={[styles.slotBtn, selectedTime === time && styles.slotBtnActive]}
-                                                onPress={() => { setSelectedTime(time); setStep(3); }}>
-                                                <Text style={[styles.slotText, selectedTime === time && styles.slotTextActive]}>{time}</Text>
-                                            </TouchableOpacity>
-                                        ))
-                                    }
-                                </View>
+                                {loadingSlots
+                                    ? <ActivityIndicator color="#111" style={{ marginTop: 10 }} />
+                                    : (
+                                        <View style={styles.slotsGrid}>
+                                            {slots.length === 0
+                                                ? <Text style={styles.noSlots}>Aucun créneau disponible pour cette journée.</Text>
+                                                : slots.map(time => (
+                                                    <TouchableOpacity
+                                                        key={time}
+                                                        style={[styles.slotBtn, selectedTime === time && styles.slotBtnActive]}
+                                                        onPress={() => { setSelectedTime(time); setStep(3); }}>
+                                                        <Text style={[styles.slotText, selectedTime === time && styles.slotTextActive]}>{time}</Text>
+                                                    </TouchableOpacity>
+                                                ))
+                                            }
+                                        </View>
+                                    )
+                                }
                             </>
                         )}
                     </View>
