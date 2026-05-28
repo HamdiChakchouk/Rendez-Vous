@@ -34,7 +34,7 @@ export default function SearchScreen({ navigation }: any) {
 
     function handleProfilePress() {
         if (isLoggedIn) {
-            navigation.navigate('MainTabs', { screen: 'Profil' });
+            navigation.navigate('Profile');
         } else {
             navigation.navigate('Auth');
         }

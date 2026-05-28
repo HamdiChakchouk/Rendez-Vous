@@ -434,12 +434,12 @@ export default function BookingWizardScreen({ navigation, route }: any) {
                                         <Text style={styles.googleBtnText}>Continuer avec Google</Text>
                                     </TouchableOpacity>
 
-                                    <TouchableOpacity 
+                                    {/* <TouchableOpacity 
                                         style={[styles.ssoBtn, styles.fbBtn, isLoading && { opacity: 0.6 }]}
                                         onPress={() => handleSSOLogin('facebook')}
                                         disabled={isLoading}>
                                         <Text style={styles.fbBtnText}>Continuer avec Facebook</Text>
-                                    </TouchableOpacity>
+                                    </TouchableOpacity> */}
                                     
                                     <TouchableOpacity 
                                         style={styles.skipBtn}

@@ -4,7 +4,7 @@ import {
     ActivityIndicator, RefreshControl, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, ArrowLeft, Check, CheckSquare, User } from 'lucide-react-native';
+import { Bell, ArrowLeft, Check, CheckSquare, User, Globe, ChevronDown } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 
 interface Notification {
@@ -106,21 +106,26 @@ export default function NotificationsScreen({ navigation }: any) {
     if (loading) {
         return (
             <SafeAreaView style={styles.container}>
-                <View style={styles.header}>
-                    <Text style={styles.logo}>RESERVY</Text>
-                    <Text style={styles.headerSub}>Notifications</Text>
+                {/* Page Title Row */}
+                <View style={styles.pageTitleRow}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.pageTitle}>Notifications</Text>
+                        <Text style={styles.pageSubtitle}>Gérez vos alertes</Text>
+                    </View>
                 </View>
-                <ActivityIndicator size="large" color="#1152d4" style={{ flex: 1 }} />
+                <ActivityIndicator size="large" color="#111" style={{ flex: 1 }} />
             </SafeAreaView>
         );
     }
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Header unifié */}
-            <View style={styles.header}>
-                <Text style={styles.logo}>RESERVY</Text>
-                <Text style={styles.headerSub}>Notifications</Text>
+            {/* Page Title Row */}
+            <View style={styles.pageTitleRow}>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.pageTitle}>Notifications</Text>
+                    <Text style={styles.pageSubtitle}>Gérez vos alertes</Text>
+                </View>
                 {unreadCount > 0 && (
                     <TouchableOpacity onPress={markAllAsRead} style={styles.markAllBtn}>
                         <CheckSquare size={20} color="#1152d4" />
@@ -193,28 +198,56 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#fff',
     },
+    // Header Styles
     header: {
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        paddingTop: 10,
+        paddingBottom: 10,
         backgroundColor: '#fff',
     },
-    logo: { fontSize: 20, fontWeight: '900', color: '#111', letterSpacing: 3 },
-    headerSub: { fontSize: 13, color: '#9CA3AF', fontWeight: '600', marginTop: 2 },
-    backBtn: {
-        padding: 4,
-        position: 'absolute',
-        right: 16,
-        top: 16,
+    langBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F3F4F6',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        gap: 4,
     },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '800',
+    langText: {
+        fontSize: 12,
+        fontWeight: '700',
         color: '#111',
     },
+    logo: {
+        fontSize: 20,
+        fontWeight: '900',
+        letterSpacing: 4,
+        color: '#111',
+    },
+    profileBtn: {
+        width: 36,
+        height: 36,
+        backgroundColor: '#111',
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+
+    pageTitleRow: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        paddingHorizontal: 20, 
+        paddingVertical: 14, 
+        backgroundColor: '#fff', 
+        borderBottomWidth: 1, 
+        borderBottomColor: '#F3F4F6' 
+    },
+    pageTitle: { fontSize: 18, fontWeight: '900', color: '#111' },
+    pageSubtitle: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
     markAllBtn: {
         padding: 4,
     },

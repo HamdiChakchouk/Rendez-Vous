@@ -25,10 +25,31 @@ export interface ApiResult {
     message: string;
 }
 
+/**
+ * Wrapper for fetch with a timeout using AbortController
+ */
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 10000): Promise<Response> {
+    return new Promise((resolve, reject) => {
+        const id = setTimeout(() => {
+            reject(new Error('Timeout: Le serveur met trop de temps à répondre.'));
+        }, timeoutMs);
+
+        fetch(url, options)
+            .then(response => {
+                clearTimeout(id);
+                resolve(response);
+            })
+            .catch(error => {
+                clearTimeout(id);
+                reject(error);
+            });
+    });
+}
+
 /** Appelle POST /api/otp/send via le backend Vercel */
 export async function sendOTPViaBackend(phone: string): Promise<ApiResult> {
     try {
-        const res = await fetch(`${BASE_URL}/api/otp/send`, {
+        const res = await fetchWithTimeout(`${BASE_URL}/api/otp/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone }),
@@ -57,7 +78,7 @@ export async function verifyOTPViaBackend(
         // Formater la date pour le backend (YYYY-MM-DD)
         const dateFormatted = new Date(bookingData.date).toISOString().split('T')[0];
 
-        const res = await fetch(`${BASE_URL}/api/otp/verify`, {
+        const res = await fetchWithTimeout(`${BASE_URL}/api/otp/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -79,12 +100,12 @@ export async function verifyOTPViaBackend(
             // Enregistrer le push token en DB pour les notifications futures
             const pushToken = await AsyncStorage.getItem('expo_push_token');
             if (pushToken) {
-                // Non bloquant
-                fetch(`${BASE_URL}/api/clients/register-token`, {
+                // Non bloquant, avec timeout court de 5s
+                fetchWithTimeout(`${BASE_URL}/api/clients/register-token`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, pushToken }),
-                }).catch(() => {});
+                }, 5000).catch(() => {});
             }
 
             return { success: true, message: data.message || 'Validé' };
@@ -105,7 +126,7 @@ export async function createBookingDirectly(
     try {
         const dateFormatted = new Date(bookingData.date).toISOString().split('T')[0];
 
-        const res = await fetch(`${BASE_URL}/api/bookings`, {
+        const res = await fetchWithTimeout(`${BASE_URL}/api/bookings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -136,7 +157,7 @@ export async function createBookingDirectly(
  */
 export async function registerPushToken(phone: string, pushToken: string): Promise<void> {
     try {
-        await fetch(`${BASE_URL}/api/clients/register-token`, {
+        await fetchWithTimeout(`${BASE_URL}/api/clients/register-token`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone, pushToken }),

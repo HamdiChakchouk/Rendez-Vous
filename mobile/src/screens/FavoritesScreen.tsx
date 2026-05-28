@@ -1,29 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, MapPin, User } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
-
-const MOCK_FAVORITES = [
-    {
-        id: '1',
-        nom_salon: 'Élégance de Carthage',
-        adresse: 'Les Berges du Lac 2, Tunis',
-        logo_url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=600&auto=format&fit=crop',
-        categorie: 'Coiffeur',
-    },
-    {
-        id: '2',
-        nom_salon: 'Studio Belle',
-        adresse: 'Menzah 6, Ariana',
-        logo_url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?q=80&w=600&auto=format&fit=crop',
-        categorie: 'Onglerie',
-    },
-];
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function FavoritesScreen({ navigation }: any) {
-    const [favorites, setFavorites] = useState(MOCK_FAVORITES);
+    const [favorites, setFavorites] = useState<any[]>([]);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
@@ -35,33 +20,96 @@ export default function FavoritesScreen({ navigation }: any) {
         return () => subscription.unsubscribe();
     }, []);
 
-    const removeFavorite = (id: string) => {
-        setFavorites(prev => prev.filter(f => f.id !== id));
+    const fetchFavorites = async () => {
+        if (!isLoggedIn) return;
+        setLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data, error } = await supabase
+                .from('favoris')
+                .select(`
+                    id,
+                    salon_id,
+                    salons ( id, nom_salon, adresse, logo_url )
+                `)
+                .eq('client_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setFavorites(data || []);
+        } catch (err) {
+            console.error('Error fetching favorites:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    if (favorites.length === 0) {
-        return (
-            <SafeAreaView style={styles.container}>
-                <View style={styles.header}>
-                <Text style={styles.logo}>RESERVY</Text>
-                <Text style={styles.headerSub}>Mes Favoris</Text>
-            </View>
+    useFocusEffect(
+        useCallback(() => {
+            if (isLoggedIn) {
+                fetchFavorites();
+            } else {
+                setLoading(false);
+            }
+        }, [isLoggedIn])
+    );
 
-                <View style={styles.emptyState}>
-                    <Heart size={60} color="#E5E7EB" />
-                    <Text style={styles.emptyTitle}>Aucun favori</Text>
-                    <Text style={styles.emptySubtitle}>
-                        Ajoutez des salons à vos favoris pour les retrouver rapidement
-                    </Text>
-                    <TouchableOpacity
-                        style={styles.exploreBtn}
-                        onPress={() => navigation.navigate('Search')}>
-                        <Text style={styles.exploreBtnText}>Découvrir des salons</Text>
-                    </TouchableOpacity>
+    const removeFavorite = async (id: string) => {
+        // Retrait optimiste pour une meilleure UX
+        const previousFavs = [...favorites];
+        setFavorites(prev => prev.filter(f => f.id !== id));
+
+        const { error } = await supabase
+            .from('favoris')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            // Rollback en cas d'erreur
+            setFavorites(previousFavs);
+            Alert.alert('Erreur', "Impossible de retirer ce favori.");
+        }
+    };
+
+    const renderFavorite = ({ item }: { item: any }) => {
+        const salon = item.salons || {};
+        
+        // Image de remplacement si pas de logo
+        const logoUrl = salon.logo_url || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=600&auto=format&fit=crop';
+
+        return (
+            <TouchableOpacity 
+                style={styles.card}
+                onPress={() => navigation.navigate('SalonDetail', { salonId: salon.id })}
+            >
+                <Image source={{ uri: logoUrl }} style={styles.cardImage} />
+                <View style={styles.cardBody}>
+                    <View style={styles.cardInfo}>
+                        <Text style={styles.salonName}>{salon.nom_salon || 'Salon Inconnu'}</Text>
+                        <View style={styles.locationRow}>
+                            <MapPin size={12} color="#6B7280" />
+                            <Text style={styles.salonAddress}>{salon.adresse || 'Adresse non spécifiée'}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.cardActions}>
+                        <TouchableOpacity
+                            style={styles.heartBtn}
+                            onPress={() => removeFavorite(item.id)}>
+                            <Heart size={16} color="#e11d48" fill="#e11d48" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={styles.reserveBtn}
+                            onPress={() => navigation.navigate('SalonDetail', { salonId: salon.id })}
+                        >
+                            <Text style={styles.reserveBtnText}>Réserver</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </SafeAreaView>
+            </TouchableOpacity>
         );
-    }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -83,40 +131,34 @@ export default function FavoritesScreen({ navigation }: any) {
                         <Text style={styles.exploreBtnText}>Se connecter</Text>
                     </TouchableOpacity>
                 </View>
+            ) : loading ? (
+                <View style={styles.loadingState}>
+                    <ActivityIndicator size="large" color="#111" />
+                </View>
+            ) : favorites.length === 0 ? (
+                <View style={styles.emptyState}>
+                    <Heart size={60} color="#E5E7EB" />
+                    <Text style={styles.emptyTitle}>Aucun favori</Text>
+                    <Text style={styles.emptySubtitle}>
+                        Ajoutez des salons à vos favoris pour les retrouver rapidement
+                    </Text>
+                    <TouchableOpacity
+                        style={styles.exploreBtn}
+                        onPress={() => navigation.navigate('Search')}>
+                        <Text style={styles.exploreBtnText}>Découvrir des salons</Text>
+                    </TouchableOpacity>
+                </View>
             ) : (
                 <>
                     <Text style={styles.pageTitle}>Mes Favoris</Text>
                     <Text style={styles.pageSubtitle}>{favorites.length} salon(s) enregistré(s)</Text>
 
                     <FlatList
-                data={favorites}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.list}
-                renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.card}>
-                        <Image source={{ uri: item.logo_url }} style={styles.cardImage} />
-                        <View style={styles.cardBody}>
-                            <View style={styles.cardInfo}>
-                                <Text style={styles.salonName}>{item.nom_salon}</Text>
-                                <View style={styles.locationRow}>
-                                    <MapPin size={12} color="#6B7280" />
-                                    <Text style={styles.salonAddress}>{item.adresse} • {item.categorie}</Text>
-                                </View>
-                            </View>
-                            <View style={styles.cardActions}>
-                                <TouchableOpacity
-                                    style={styles.heartBtn}
-                                    onPress={() => removeFavorite(item.id)}>
-                                    <Heart size={16} color="#e11d48" fill="#e11d48" />
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.reserveBtn}>
-                                    <Text style={styles.reserveBtnText}>Réserver</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </TouchableOpacity>
-                )}
-            />
+                        data={favorites}
+                        keyExtractor={(item) => item.id}
+                        contentContainerStyle={styles.list}
+                        renderItem={renderFavorite}
+                    />
                 </>
             )}
         </SafeAreaView>
@@ -220,6 +262,11 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 13,
         fontWeight: '700',
+    },
+    loadingState: { 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center' 
     },
     emptyState: {
         flex: 1,

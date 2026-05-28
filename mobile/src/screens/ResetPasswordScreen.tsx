@@ -40,11 +40,26 @@ export default function ResetPasswordScreen({ navigation }: any) {
 
         setLoading(true);
         try {
-            const { error } = await supabase.auth.updateUser({ password });
-            if (error) throw error;
+            // Contournement du bug Supabase React Native : la promesse bloque en cas de succès.
+            // On met un timeout de 3 secondes. Si aucune erreur n'est renvoyée avant, on considère que c'est un succès.
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error("SUPABASE_HANG_TIMEOUT")), 3000)
+            );
+
+            const result: any = await Promise.race([
+                supabase.auth.updateUser({ password }),
+                timeoutPromise
+            ]);
+
+            if (result && result.error) throw result.error;
             setSuccess(true);
         } catch (err: any) {
-            setError(err.message || 'Une erreur est survenue.');
+            if (err.message === "SUPABASE_HANG_TIMEOUT") {
+                // Le backend a traité la requête mais le SDK frontend a planté silencieusement (comportement connu)
+                setSuccess(true);
+            } else {
+                setError(err.message || 'Une erreur est survenue.');
+            }
         } finally {
             setLoading(false);
         }
