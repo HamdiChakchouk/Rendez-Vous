@@ -57,7 +57,7 @@ export default function LandingScreen({ navigation }: any) {
 
     function handleProfilePress() {
         if (isLoggedIn) {
-            navigation.navigate('Profile');
+            navigation.navigate('MainTabs', { screen: 'Profil' });
         } else {
             navigation.navigate('Auth');
         }

@@ -4,7 +4,11 @@ import {
     Modal, TextInput, ActivityIndicator, Alert, FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar, TrendingUp, Search, Plus, MapPin, RefreshCw, User, Check, X, CalendarOff, Globe, ChevronDown, CheckCircle, XCircle } from 'lucide-react-native';
+import {
+    Calendar, Plus, CheckCircle, XCircle, LogOut,
+    Settings, CalendarOff, Clock, User, Phone, ChevronRight,
+    TrendingUp, RefreshCw,
+} from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../lib/supabase';
 
@@ -215,8 +219,8 @@ export default function SalonDashboardScreen({ navigation }: any) {
 
     return (
         <SafeAreaView style={styles.container}>
-            {/* Page Title Row */}
-            <View style={styles.pageTitleRow}>
+            {/* Header */}
+            <View style={styles.header}>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.salonName}>{salonName}</Text>
                     <Text style={styles.headerSub}>
@@ -438,56 +442,8 @@ export default function SalonDashboardScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F9FAFB' },
-    
-    // Header Styles
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 10,
-        backgroundColor: '#fff',
-    },
-    langBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F3F4F6',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-        gap: 4,
-    },
-    langText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#111',
-    },
-    logo: {
-        fontSize: 20,
-        fontWeight: '900',
-        letterSpacing: 4,
-        color: '#111',
-    },
-    profileBtn: {
-        width: 36,
-        height: 36,
-        backgroundColor: '#111',
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    pageTitleRow: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        paddingHorizontal: 20, 
-        paddingVertical: 14, 
-        backgroundColor: '#fff', 
-        borderBottomWidth: 1, 
-        borderBottomColor: '#F3F4F6' 
-    },
-    salonName: { fontSize: 18, fontWeight: '900', color: '#111' },
+    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    salonName: { fontSize: 16, fontWeight: '900', color: '#111' },
     headerSub: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
     iconBtn: { width: 38, height: 38, backgroundColor: '#F3F4F6', borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
     statsRow: { flexDirection: 'row', gap: 12, padding: 20 },

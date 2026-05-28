@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar } from 'react-native-calendars';
 import {
     ArrowLeft, Plus, Check, X, Calendar as CalendarIcon,
-    Clock, AlertCircle, ChevronDown, MessageSquare, CheckSquare, Square, User, Globe
+    Clock, AlertCircle, ChevronDown, MessageSquare, CheckSquare, Square
 } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import { BASE_URL } from '../lib/apiService';
@@ -554,15 +554,12 @@ export default function SalonAbsencesScreen({ navigation }: any) {
 
     return (
         <SafeAreaView style={s.container}>
-            {/* Page Title Row */}
-            <View style={s.pageTitleRow}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 12 }}>
+            {/* Header */}
+            <View style={s.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()}>
                     <ArrowLeft size={22} color="#111" />
                 </TouchableOpacity>
-                <View style={{ flex: 1 }}>
-                    <Text style={s.pageTitle}>Absences & Congés</Text>
-                    <Text style={s.pageSubtitle}>Gérez vos indisponibilités</Text>
-                </View>
+                <Text style={s.title}>Absences & Congés</Text>
                 <TouchableOpacity style={s.addBtn} onPress={openAdd}>
                     <Plus size={20} color="#fff" />
                 </TouchableOpacity>
@@ -817,58 +814,8 @@ export default function SalonAbsencesScreen({ navigation }: any) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F9FAFB' },
-    
-    // Header Styles
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 10,
-        backgroundColor: '#fff',
-    },
-    langBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F3F4F6',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-        gap: 4,
-    },
-    langText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#111',
-    },
-    logo: {
-        fontSize: 20,
-        fontWeight: '900',
-        letterSpacing: 4,
-        color: '#111',
-    },
-    profileBtn: {
-        width: 36,
-        height: 36,
-        backgroundColor: '#111',
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    pageTitleRow: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        paddingHorizontal: 20, 
-        paddingVertical: 14, 
-        backgroundColor: '#fff', 
-        borderBottomWidth: 1, 
-        borderBottomColor: '#F3F4F6' 
-    },
-    pageTitle: { fontSize: 18, fontWeight: '900', color: '#111' },
-    pageSubtitle: { fontSize: 11, color: '#9CA3AF', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
-    
+    header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    title: { fontSize: 18, fontWeight: '900', color: '#111', flex: 1 },
     addBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' },
     tabsContainer: { flexDirection: 'row', backgroundColor: '#F3F4F6', marginHorizontal: 20, marginTop: 16, marginBottom: 8, borderRadius: 12, padding: 4 },
     tabBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10 },

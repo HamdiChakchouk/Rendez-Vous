@@ -7,16 +7,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  */
 const memoryStorage: Record<string, string> = {};
 
-/**
- * Timeout wrapper to prevent AsyncStorage from hanging the app
- */
-const withTimeout = <T>(promise: Promise<T>, ms: number = 2000): Promise<T> => {
-    return Promise.race([
-        promise,
-        new Promise<T>((_, reject) => setTimeout(() => reject(new Error('AsyncStorage timeout')), ms))
-    ]);
-};
-
 export const supabaseStorage = {
     getItem: async (key: string): Promise<string | null> => {
         if (Platform.OS === 'web') {
@@ -27,10 +17,10 @@ export const supabaseStorage = {
         }
 
         try {
-            const value = await withTimeout(AsyncStorage.getItem(key));
+            const value = await AsyncStorage.getItem(key);
             return value;
         } catch (error) {
-            console.warn('supabaseStorage.getItem error or timeout (falling back to memory):', error);
+            console.warn('supabaseStorage.getItem error (falling back to memory):', error);
             return memoryStorage[key] || null;
         }
     },
@@ -45,9 +35,9 @@ export const supabaseStorage = {
         }
 
         try {
-            await withTimeout(AsyncStorage.setItem(key, value));
+            await AsyncStorage.setItem(key, value);
         } catch (error) {
-            console.warn('supabaseStorage.setItem error or timeout (falling back to memory):', error);
+            console.warn('supabaseStorage.setItem error (falling back to memory):', error);
             memoryStorage[key] = value;
         }
     },
@@ -62,9 +52,9 @@ export const supabaseStorage = {
         }
 
         try {
-            await withTimeout(AsyncStorage.removeItem(key));
+            await AsyncStorage.removeItem(key);
         } catch (error) {
-            console.warn('supabaseStorage.removeItem error or timeout (falling back to memory):', error);
+            console.warn('supabaseStorage.removeItem error (falling back to memory):', error);
             delete memoryStorage[key];
         }
     },

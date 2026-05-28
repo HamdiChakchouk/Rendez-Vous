@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Calendar, Heart, Bell, LayoutDashboard, CalendarOff, Shield } from 'lucide-react-native';
+import { Home, Calendar, Heart, Bell, LayoutDashboard, CalendarOff } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 
@@ -11,7 +11,6 @@ import FavoritesScreen from '../screens/FavoritesScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SalonDashboardScreen from '../screens/SalonDashboardScreen';
 import SalonAbsencesScreen from '../screens/SalonAbsencesScreen';
-import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -111,7 +110,6 @@ export default function MainTabNavigator() {
 
                     if (route.name === 'Accueil') return <View style={iconWrapperStyle}><Home size={20} color={iconColor} /></View>;
                     if (route.name === 'Dashboard') return <View style={iconWrapperStyle}><LayoutDashboard size={20} color={iconColor} /></View>;
-                    if (route.name === 'Admin') return <View style={iconWrapperStyle}><Shield size={20} color={iconColor} /></View>;
                     if (route.name === 'RDV') return <View style={iconWrapperStyle}><Calendar size={20} color={iconColor} /></View>;
                     if (route.name === 'Absences') return <View style={iconWrapperStyle}><CalendarOff size={20} color={iconColor} /></View>;
                     if (route.name === 'Favoris') return <View style={iconWrapperStyle}><Heart size={20} color={iconColor} /></View>;
@@ -119,13 +117,7 @@ export default function MainTabNavigator() {
                     return null;
                 },
             })}>
-            {role === 'super_admin' ? (
-                <>
-                    <Tab.Screen name="Accueil" component={LandingScreen} />
-                    <Tab.Screen name="Admin" component={AdminDashboardScreen} options={{ tabBarLabel: 'Admin' }} />
-                    <Tab.Screen name="Notifications" component={NotificationsScreen} />
-                </>
-            ) : isPro ? (
+            {isPro ? (
                 <>
                     <Tab.Screen name="Dashboard" component={SalonDashboardScreen} options={{ tabBarLabel: 'Espace Salon' }} />
                     <Tab.Screen name="Absences" component={SalonAbsencesScreen} options={{ tabBarLabel: role === 'coiffeur' ? 'Mes Absences' : 'Absences' }} />

@@ -37,48 +37,21 @@ export default function App() {
   const navigationRef = useRef<any>(null);
   const handleSupabaseUrl = async (url: string | null) => {
     if (!url) return;
-    if (!url.includes('type=recovery') && !url.includes('reset-password') && !url.includes('type=invite')) return;
-
-    // Helper : parse les params en respectant les = dans les valeurs (JWT base64)
-    const parseParams = (str: string): Record<string, string> => {
-      const result: Record<string, string> = {};
-      str.split('&').filter(Boolean).forEach(p => {
-        const eqIdx = p.indexOf('=');
-        if (eqIdx > -1) {
-          result[p.slice(0, eqIdx)] = decodeURIComponent(p.slice(eqIdx + 1));
+    if (url.includes('type=recovery') || url.includes('reset-password')) {
+      const fragment = url.split('#')[1] || url.split('?')[1] || '';
+      try {
+        const params = Object.fromEntries(
+          fragment.split('&').map(p => p.split('=').map(decodeURIComponent))
+        );
+        if (params.access_token && params.refresh_token) {
+          await supabase.auth.setSession({
+            access_token: params.access_token,
+            refresh_token: params.refresh_token,
+          });
         }
-      });
-      return result;
-    };
-
-    try {
-      // 1. Essayer le flux PKCE (code dans les query params)
-      const queryPart = url.split('?')[1]?.split('#')[0] || '';
-      const queryParams = parseParams(queryPart);
-
-      if (queryParams.code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(queryParams.code);
-        if (!error) {
-          setTimeout(() => navigationRef.current?.navigate('ResetPassword' as never), 800);
-        }
-        return;
+      } catch (e) {
+        console.error("Error parsing deep link", e);
       }
-
-      // 2. Flux implicite (tokens dans le fragment #)
-      const fragment = url.split('#')[1] || '';
-      const fragParams = parseParams(fragment);
-
-      if (fragParams.access_token && fragParams.refresh_token) {
-        const { error } = await supabase.auth.setSession({
-          access_token: fragParams.access_token,
-          refresh_token: fragParams.refresh_token,
-        });
-        if (!error) {
-          setTimeout(() => navigationRef.current?.navigate('ResetPassword' as never), 800);
-        }
-      }
-    } catch (e) {
-      console.error('Error parsing deep link', e);
     }
   };
 
@@ -92,43 +65,19 @@ export default function App() {
     async getInitialURL() {
       const url = await Linking.getInitialURL();
       if (url) {
-        const isRecoveryOrInvite = url.includes('type=recovery') || url.includes('reset-password') || url.includes('type=invite');
-        if (isRecoveryOrInvite) {
-          // On gère la navigation manuellement dans handleSupabaseUrl
-          // On retourne null pour que React Navigation ne tente pas de router en même temps
-          await handleSupabaseUrl(url);
-          return null;
-        }
+        await handleSupabaseUrl(url);
       }
       return url;
     },
     subscribe(listener: (url: string) => void) {
-      const onReceiveURL = async ({ url }: { url: string }) => {
-        const isRecoveryOrInvite = url.includes('type=recovery') || url.includes('reset-password') || url.includes('type=invite');
-        if (isRecoveryOrInvite) {
-          // On gère nous-mêmes, pas besoin d'appeler listener
-          await handleSupabaseUrl(url);
-          return;
-        }
+      const onReceiveURL = ({ url }: { url: string }) => {
+        handleSupabaseUrl(url);
         listener(url);
       };
       const subscription = Linking.addEventListener('url', onReceiveURL);
       return () => subscription.remove();
     },
   };
-
-  // Écouter l'événement PASSWORD_RECOVERY pour naviguer vers l'écran de réinitialisation
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        // Attendre que le navigateur soit prêt avant de naviguer
-        setTimeout(() => {
-          navigationRef.current?.navigate('ResetPassword');
-        }, 300);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     // Demander la permission et récupérer le token Push au lancement de l'application

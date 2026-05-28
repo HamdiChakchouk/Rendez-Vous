@@ -135,12 +135,6 @@ export class NotificationService {
             return true;
         }
 
-        // Pour les tests avec le numéro +21698765432, on simule le succès de l'envoi Twilio
-        if (to === '+21698765432') {
-            console.log(`[Twilio Bypass] Simulation de succès pour le numéro de test ${to}. Message: ${message}`);
-            return true;
-        }
-
         try {
             await client.messages.create({
                 body: message,

@@ -13,17 +13,14 @@
       "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.hamdi.reservy",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "package": "com.hamdi.reservy",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.hamdi.reservy"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -42,8 +39,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "ee02c488-ef21-4aef-abba-320cab5ef641"
+        "projectId": "ebafe4f4-e762-4f37-8c05-f1e4365a0a17"
       }
-    }
+    },
+    "owner": "hamdi005"
   }
 }

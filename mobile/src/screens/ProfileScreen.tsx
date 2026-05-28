@@ -18,7 +18,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 // URL de votre app web en production (ou localhost en dev)
-const WEB_BASE_URL = 'https://reservy-one.vercel.app';
+const WEB_BASE_URL = 'http://192.168.1.39:3000';
 
 export default function ProfileScreen({ navigation }: any) {
     const [userEmail, setUserEmail] = useState('');
@@ -81,9 +81,7 @@ export default function ProfileScreen({ navigation }: any) {
                 text: 'Envoyer',
                 onPress: async () => {
                     if (!userEmail) return;
-                    const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-                        redirectTo: 'reservy://reset-password',
-                    });
+                    const { error } = await supabase.auth.resetPasswordForEmail(userEmail);
                     if (error) {
                         Alert.alert('Erreur', error.message);
                     } else {

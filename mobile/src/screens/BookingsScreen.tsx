@@ -1,24 +1,24 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar, ChevronRight, User } from 'lucide-react-native';
+import { Calendar, Clock, CheckCircle, XCircle, ChevronRight, User } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
-import { useFocusEffect } from '@react-navigation/native';
+
+const MOCK_BOOKINGS = [
+    { id: '1', salon: 'Élégance de Carthage', service: 'Coupe + Soin', date: '10 Mar 2026', heure: '14:30', statut: 'confirme', prix: '55 TND' },
+    { id: '2', salon: 'Studio Belle', service: 'Manucure gel', date: '15 Mar 2026', heure: '10:00', statut: 'en_attente', prix: '35 TND' },
+    { id: '3', salon: 'Élégance de Carthage', service: 'Coupe + Brushing', date: '20 Fév 2026', heure: '11:00', statut: 'termine', prix: '45 TND' },
+];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-    pending: { label: 'En attente', color: '#92400E', bg: '#FEF3C7' },
-    confirmed: { label: 'Confirmé', color: '#065F46', bg: '#D1FAE5' },
-    reminded: { label: 'Rappelé', color: '#1D4ED8', bg: '#DBEAFE' },
-    completed: { label: 'Terminé', color: '#374151', bg: '#F3F4F6' },
-    no_show: { label: 'Non présenté', color: '#991B1B', bg: '#FEE2E2' },
-    cancelled_client: { label: 'Annulé (Vous)', color: '#991B1B', bg: '#FEE2E2' },
-    cancelled_salon: { label: 'Annulé (Salon)', color: '#991B1B', bg: '#FEE2E2' },
+    confirme: { label: 'Confirmé', color: '#065F46', bg: '#D1FAE5' },
+    en_attente: { label: 'En attente', color: '#92400E', bg: '#FEF3C7' },
+    termine: { label: 'Terminé', color: '#374151', bg: '#F3F4F6' },
+    annule: { label: 'Annulé', color: '#991B1B', bg: '#FEE2E2' },
 };
 
 export default function BookingsScreen({ navigation }: any) {
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
-    const [bookings, setBookings] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data: { user } }) => {
@@ -30,116 +30,39 @@ export default function BookingsScreen({ navigation }: any) {
         return () => subscription.unsubscribe();
     }, []);
 
-    const fetchBookings = async () => {
-        if (!isLoggedIn) return;
-        setLoading(true);
-        try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            const { data, error } = await supabase
-                .from('rendez_vous')
-                .select(`
-                    id,
-                    date_rdv,
-                    heure_rdv,
-                    statut,
-                    salons ( id, nom_salon, adresse ),
-                    services ( nom_service, prix )
-                `)
-                .eq('client_id', user.id)
-                .order('date_rdv', { ascending: false })
-                .order('heure_rdv', { ascending: false });
-
-            if (error) throw error;
-            setBookings(data || []);
-        } catch (err) {
-            console.error('Error fetching bookings:', err);
-            Alert.alert('Erreur', 'Impossible de récupérer vos rendez-vous.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useFocusEffect(
-        useCallback(() => {
-            if (isLoggedIn) {
-                fetchBookings();
-            } else {
-                setLoading(false);
-            }
-        }, [isLoggedIn])
-    );
-
-    const cancelBooking = async (id: string) => {
-        Alert.alert('Annuler le RDV', 'Êtes-vous sûr de vouloir annuler ce rendez-vous ?', [
-            { text: 'Non', style: 'cancel' },
-            {
-                text: 'Oui, annuler',
-                style: 'destructive',
-                onPress: async () => {
-                    const { error } = await supabase
-                        .from('rendez_vous')
-                        .update({ statut: 'cancelled_client' })
-                        .eq('id', id);
-                    if (error) {
-                        Alert.alert('Erreur', "L'annulation a échoué.");
-                    } else {
-                        fetchBookings();
-                    }
-                }
-            }
-        ]);
-    };
-
-    const renderBooking = ({ item }: { item: any }) => {
-        const cfg = STATUS_CONFIG[item.statut] || STATUS_CONFIG.pending;
-        const salon = item.salons || {};
-        const service = item.services || {};
-
-        // Format de date simple
-        const dateObj = new Date(item.date_rdv);
-        const formattedDate = dateObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-        const heure = item.heure_rdv ? item.heure_rdv.substring(0, 5) : '';
-
+    const renderBooking = ({ item }: { item: typeof MOCK_BOOKINGS[0] }) => {
+        const cfg = STATUS_CONFIG[item.statut] || STATUS_CONFIG.en_attente;
         return (
             <View style={styles.card}>
                 <View style={styles.cardTop}>
                     <View style={styles.cardLeft}>
-                        <Text style={styles.salonName}>{salon.nom_salon || 'Salon Inconnu'}</Text>
-                        <Text style={styles.serviceName}>{service.nom_service || 'Service Inconnu'}</Text>
+                        <Text style={styles.salonName}>{item.salon}</Text>
+                        <Text style={styles.serviceName}>{item.service}</Text>
                         <View style={styles.dateRow}>
                             <Calendar size={13} color="#6B7280" />
-                            <Text style={styles.dateText}>{formattedDate} à {heure}</Text>
+                            <Text style={styles.dateText}>{item.date} à {item.heure}</Text>
                         </View>
                     </View>
                     <View style={styles.cardRight}>
-                        <Text style={styles.prix}>{service.prix ? `${service.prix} TND` : '-'}</Text>
+                        <Text style={styles.prix}>{item.prix}</Text>
                         <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
                             <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
                         </View>
                     </View>
                 </View>
-                
-                {(item.statut === 'pending' || item.statut === 'confirmed' || item.statut === 'reminded') && (
+                {item.statut === 'confirme' && (
                     <View style={styles.cardActions}>
-                        <TouchableOpacity style={styles.cancelBtn} onPress={() => cancelBooking(item.id)}>
+                        <TouchableOpacity style={styles.cancelBtn}>
                             <Text style={styles.cancelBtnText}>Annuler</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={styles.detailBtn}
-                            onPress={() => navigation.navigate('SalonDetail', { salonId: salon.id })}
-                        >
+                        <TouchableOpacity style={styles.detailBtn}>
                             <Text style={styles.detailBtnText}>Voir le salon</Text>
                             <ChevronRight size={14} color="#1152d4" />
                         </TouchableOpacity>
                     </View>
                 )}
-                {item.statut === 'completed' && salon.id && (
-                    <TouchableOpacity 
-                        style={styles.rebookBtn}
-                        onPress={() => navigation.navigate('SalonDetail', { salonId: salon.id })}
-                    >
+                {item.statut === 'termine' && (
+                    <TouchableOpacity style={styles.rebookBtn}>
                         <Text style={styles.rebookBtnText}>Reprendre RDV</Text>
                     </TouchableOpacity>
                 )}
@@ -149,6 +72,7 @@ export default function BookingsScreen({ navigation }: any) {
 
     return (
         <SafeAreaView style={styles.container}>
+            {/* Header unifié */}
             <View style={styles.header}>
                 <Text style={styles.logo}>RESERVY</Text>
                 <Text style={styles.headerSub}>Mes Rendez-vous</Text>
@@ -165,27 +89,23 @@ export default function BookingsScreen({ navigation }: any) {
                         <Text style={styles.bookBtnText}>Se connecter</Text>
                     </TouchableOpacity>
                 </View>
-            ) : loading ? (
-                <View style={styles.loadingState}>
-                    <ActivityIndicator size="large" color="#111" />
-                </View>
             ) : (
                 <FlatList
-                    data={bookings}
-                    keyExtractor={(item) => item.id}
-                    contentContainerStyle={styles.list}
-                    ListHeaderComponent={<Text style={styles.pageTitle}>Mes Rendez-vous</Text>}
-                    renderItem={renderBooking}
-                    ListEmptyComponent={
-                        <View style={styles.emptyState}>
-                            <Calendar size={60} color="#E5E7EB" />
-                            <Text style={styles.emptyTitle}>Aucun rendez-vous</Text>
-                            <TouchableOpacity style={styles.bookBtn} onPress={() => navigation.navigate('Search')}>
-                                <Text style={styles.bookBtnText}>Réserver maintenant</Text>
-                            </TouchableOpacity>
-                        </View>
-                    }
-                />
+                data={MOCK_BOOKINGS}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.list}
+                ListHeaderComponent={<Text style={styles.pageTitle}>Mes Rendez-vous</Text>}
+                renderItem={renderBooking}
+                ListEmptyComponent={
+                    <View style={styles.emptyState}>
+                        <Calendar size={60} color="#E5E7EB" />
+                        <Text style={styles.emptyTitle}>Aucun rendez-vous</Text>
+                        <TouchableOpacity style={styles.bookBtn} onPress={() => navigation.navigate('Search')}>
+                            <Text style={styles.bookBtnText}>Réserver maintenant</Text>
+                        </TouchableOpacity>
+                    </View>
+                }
+            />
             )}
         </SafeAreaView>
     );
@@ -216,8 +136,7 @@ const styles = StyleSheet.create({
     detailBtnText: { color: '#1152d4', fontSize: 13, fontWeight: '700' },
     rebookBtn: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F3F4F6', alignItems: 'center' },
     rebookBtnText: { color: '#111', fontSize: 14, fontWeight: '700' },
-    loadingState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 12, marginTop: 40 },
+    emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, gap: 12 },
     emptyTitle: { fontSize: 22, fontWeight: '800', color: '#111' },
     emptySubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
     bookBtn: { backgroundColor: '#111', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14, marginTop: 8 },
