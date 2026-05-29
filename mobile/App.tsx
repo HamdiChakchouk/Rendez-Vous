@@ -37,8 +37,8 @@ export default function App() {
   const navigationRef = useRef<any>(null);
   const handleSupabaseUrl = async (url: string | null) => {
     if (!url) return;
-    if (url.includes('type=recovery') || url.includes('reset-password')) {
-      const fragment = url.split('#')[1] || url.split('?')[1] || '';
+    const fragment = url.split('#')[1] || url.split('?')[1] || '';
+    if (fragment) {
       try {
         const params = Object.fromEntries(
           fragment.split('&').map(p => p.split('=').map(decodeURIComponent))
