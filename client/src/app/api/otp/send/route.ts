@@ -51,13 +51,13 @@ export async function POST(req: Request) {
             `Votre code de validation RESERVY: ${otp}`
         );
 
-        if (success) {
+        if (success.sent) {
             console.log(`[OTP] Hash stored, code sent to ${phone}`);
             return ok({ message: 'OTP Envoyé' });
         } else {
             // ✅ Rollback : supprimer l'OTP de la DB si le SMS a échoué
             await supabaseAdmin.from('otp_custom').delete().eq('telephone', phone).gte('created_at', new Date(Date.now() - 5000).toISOString());
-            return err("Erreur d'envoi SMS. Veuillez réessayer.", 500);
+            return err(`Erreur d'envoi SMS: ${success.error}`, 500);
         }
     } catch (error: any) {
         console.error('[OTP Send] Error:', error);

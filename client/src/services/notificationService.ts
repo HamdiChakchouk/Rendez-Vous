@@ -119,9 +119,7 @@ export class NotificationService {
                 const pushSuccess = await this.sendPushNotification(clientData.expo_push_token, message);
                 if (pushSuccess) {
                     console.log(`[Push Notification] Envoyée avec succès à ${to}`);
-                    // Si on veut une sécurité absolue, on pourrait continuer la cascade pour les annulations.
-                    // Mais en général, le Push suffit.
-                    return true;
+                    return { sent: true };
                 }
             }
         } catch (err) {
@@ -130,9 +128,8 @@ export class NotificationService {
 
         // 2. Fallback SMS Standard (Si Push échoue ou pas de token)
         if (!client || !fromPhone) {
-
             console.log(`[SMS Simulation Fallback] To: ${to}\nMessage: ${message}`);
-            return true;
+            return { sent: true };
         }
 
         try {
@@ -142,10 +139,10 @@ export class NotificationService {
                 to: to
             });
             console.log(`[Twilio SMS] Envoyé avec succès à ${to}`);
-            return true;
-        } catch (error) {
+            return { sent: true };
+        } catch (error: any) {
             console.error('[Twilio SMS Fallback Error]', error);
-            return false;
+            return { sent: false, error: error.message || 'Twilio Error' };
         }
     }
 
