@@ -5,10 +5,8 @@ import { supabase } from './supabase';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const redirectTo = makeRedirectUri();
-console.log('[Auth] Redirect URI configurée pour Expo Go:', redirectTo);
-
-
+const redirectTo = makeRedirectUri({ scheme: 'reservy' });
+console.log('[Auth] Redirect URI configurée:', redirectTo);
 export const createSessionFromUrl = async (url: string) => {
     const { params, errorCode } = QueryParams.getQueryParams(url);
 
