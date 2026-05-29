@@ -48,6 +48,12 @@ export default function App() {
             access_token: params.access_token,
             refresh_token: params.refresh_token,
           });
+          
+          if (url.includes('type=recovery') || url.includes('reset-password')) {
+            setTimeout(() => {
+              navigationRef.current?.navigate('ResetPassword');
+            }, 500);
+          }
         }
       } catch (e) {
         console.error("Error parsing deep link", e);
